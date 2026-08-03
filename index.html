@@ -17,10 +17,10 @@
     --mint:#EAFAD2; --charcoal:#555555; --dark:#333333; --mid:#888886;
     --border:#DDDDDB; --bg:#F5F5F2; --amber:#D68910; --amber-bg:#FEF9E7;
     --red:#C0392B; --red-bg:#FDECEA;
-    /* Exact green measured from the simplified logo mark itself (avg. of its
-       opaque pixels), per your note that the sidebar should match the logo's
-       green -- not an unrelated dark green. */
-    --sidebar-green:#98CD2E;
+    /* Sidebar now uses the official "GreenHill Green" from the brand style
+       guide (--green, #76BC21) rather than a sampled logo color. Kept as its
+       own variable in case the rail ever needs to diverge from --green again. */
+    --sidebar-green:#76BC21;
   }
   *{box-sizing:border-box;}
   body{
@@ -80,39 +80,40 @@
      rail reads as a floating panel instead of a bar flush with the browser edge. */
   #hubScreen{ display:none; align-items:flex-start; min-height:100vh; background:var(--bg); }
 
-  /* Icon-only rail -- flat solid brand-green, no gradients. Inset on all sides with
-     rounded corners so it floats above the page instead of a full-bleed sidebar. */
+  /* Icon-only rail -- flat solid brand-green, no gradients. Auto-height (not
+     stretched to the viewport) and inset with margin on all sides, so it reads
+     as a small floating capsule/dock near the top-left instead of a sidebar. */
   .side-rail{
-    width:60px; flex-shrink:0; background:var(--sidebar-green); color:var(--dark);
-    display:flex; flex-direction:column; align-items:center; padding:16px 0;
-    position:sticky; top:16px; height:calc(100vh - 32px); z-index:20;
-    margin:16px 0 16px 16px; border-radius:20px;
-    box-shadow:0 12px 28px rgba(15,25,10,.18);
+    width:44px; flex-shrink:0; background:var(--sidebar-green); color:var(--dark);
+    display:flex; flex-direction:column; align-items:center; padding:12px 0;
+    position:sticky; top:16px; z-index:20;
+    margin:16px 0 16px 16px; border-radius:22px;
+    box-shadow:0 10px 24px rgba(15,25,10,.2);
   }
   .rail-logo{
-    width:34px; height:34px; border-radius:10px; background:#fff;
+    width:26px; height:26px; border-radius:8px; background:#fff;
     display:flex; align-items:center; justify-content:center;
-    margin-bottom:20px; flex-shrink:0; padding:4px;
+    margin-bottom:14px; flex-shrink:0; padding:3px;
   }
   .rail-logo img{ width:100%; height:100%; object-fit:contain; }
-  .rail-icons{ display:flex; flex-direction:column; gap:6px; flex:1; width:100%; align-items:center; }
-  /* Icons default to dark (readable on this light logo-green); hover flips
-     to a solid dark chip with a white icon for clear feedback. */
+  .rail-icons{ display:flex; flex-direction:column; gap:5px; flex:1; width:100%; align-items:center; }
+  /* Icons default to dark (readable on brand green); hover flips to a solid
+     dark chip with a white icon AND scales up, like a dock magnification effect. */
   .rail-item{
-    position:relative; width:36px; height:36px; border-radius:11px; display:flex; align-items:center; justify-content:center;
+    position:relative; width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center;
     background:rgba(0,0,0,.08); color:var(--dark); text-decoration:none; cursor:pointer; border:none;
-    transition:background .15s ease, color .15s ease;
+    transition:background .15s ease, color .15s ease, transform .18s cubic-bezier(.34,1.56,.64,1);
   }
-  .rail-item svg{ width:16px; height:16px; }
-  .rail-item:hover{ background:var(--dark); color:#fff; }
+  .rail-item svg{ width:14px; height:14px; }
+  .rail-item:hover{ background:var(--dark); color:#fff; transform:scale(1.25); z-index:1; }
   .rail-item.disabled{ opacity:.4; cursor:not-allowed; pointer-events:none; }
   .rail-tooltip{
-    position:absolute; left:56px; top:50%; transform:translateY(-50%);
+    position:absolute; left:48px; top:50%; transform:translateY(-50%);
     background:var(--dark); color:#fff; font-size:11.5px; font-weight:600; white-space:nowrap;
     padding:7px 12px; border-radius:8px; opacity:0; pointer-events:none; transition:opacity .12s ease; z-index:30;
   }
-  .rail-item:hover .rail-tooltip{ opacity:1; }
-  .rail-bottom{ display:flex; flex-direction:column; gap:8px; align-items:center; width:100%; margin-top:auto; }
+  .rail-item:hover .rail-tooltip{ opacity:1; transform:translateY(-50%) scale(.8); }
+  .rail-bottom{ display:flex; flex-direction:column; gap:5px; align-items:center; width:100%; margin-top:auto; }
 
   .content-col{ flex:1; min-width:0; display:flex; flex-direction:column; }
   .main{ flex:1; padding:0 0 40px; }
@@ -188,8 +189,8 @@
   .tool-card.disabled .tag{ background:var(--amber-bg); color:var(--amber); }
 
   @media (max-width:720px){
-    .side-rail{ width:52px; padding:14px 0; }
-    .rail-logo{ width:28px; height:28px; margin-bottom:16px; }
+    .side-rail{ width:40px; padding:10px 0; }
+    .rail-logo{ width:22px; height:22px; margin-bottom:12px; }
     .main-topbar{ padding:24px 18px 0; flex-direction:column; }
     .stat-row{ padding:20px 18px 0; }
     .section{ padding:24px 18px 0; }
