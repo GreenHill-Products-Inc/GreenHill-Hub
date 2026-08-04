@@ -350,13 +350,23 @@
     salesDashboard:       "https://greenhill-products-inc.github.io/GreenHill---Dashboard/",
     estimatesManager:     "https://greenhill-products-inc.github.io/Estimates-Manager/",
     weeklyOrders:         "https://greenhill-products-inc.github.io/Weekly-Orders/",
-    poTracking:           "https://jcaguilera2704.github.io/Po_tracker/"
+    poTracking:           "https://jcaguilera2704.github.io/Po_tracker/",
+    // Placeholder -- update once pending-tasks-index.html is published to its
+    // own GitHub Pages repo, then swap this for the real URL.
+    pendingTasks:         "https://greenhill-products-inc.github.io/Pending-Tasks/"
   };
 
   // 3. URL of the NEW, SEPARATE Apps Script project (apps-script-additions-ALL.gs) --
   //    this is NOT the same URL as the Estimate Builder's own script.
   //    Deploy that file as its own Web App and paste the resulting /exec URL here.
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0DOnHom9GUWEUUtJUP-FZ_eVjTfbT1klgCTxcBXNAAErNSLbE1wgF_c103KvCjbuUpw/exec";
+
+  // Shared secret required by the Apps Script backend on every request (see
+  // SHARED_SECRET in apps-script-additions-ALL.gs). Must match EXACTLY --
+  // if you ever rotate the secret in the script, update it here too and
+  // republish both, otherwise every request from this page starts failing
+  // with "Unauthorized."
+  const APPS_SCRIPT_KEY = "fVkO0CgIYkFrHHGLSyHQwdGMkfASJL3l3MFa_cY_MCE";
 
   // 4. ROLE-BASED ACCESS -- now ON, per the roles you defined.
   //    Requires the "Users" tab + hub_getUserRole (see
@@ -368,17 +378,19 @@
   // both for you and for the Chief of Business Process, Quality and
   // Control (both get full access) -- their real title just lives in the
   // "Name" column of the Users sheet, not here.
+  // Every role gets 'pendingTasks' -- it's everyone's own to-do list, plus a
+  // managed view for roles high enough in ASSIGN_HIERARCHY (see the .gs file).
   const ROLE_TOOL_ACCESS = {
-    admin:                ['estimateBuilder','estimateBuilderSales','salesDashboard','estimatesManager','weeklyOrders','poTracking','schedule','reports','fieldMeasurements','accounting'],
-    productionAssistant:  ['estimateBuilder','estimateBuilderSales','salesDashboard','estimatesManager','poTracking','fieldMeasurements'],
-    purchasingManager:    ['weeklyOrders','poTracking','estimateBuilder'],
-    accountingManager:    ['reports','poTracking','accounting'],
-    accountAssistant:     ['poTracking'],
-    ceo:                  ['reports','poTracking','accounting'],
-    warehouseCoordinator: ['poTracking','schedule'],
-    officeAssistant:      ['poTracking','schedule'],
-    productionManager:    ['poTracking','schedule','weeklyOrders','fieldMeasurements'],
-    salesRep:             ['estimateBuilderSales','salesDashboard']
+    admin:                ['estimateBuilder','estimateBuilderSales','salesDashboard','estimatesManager','weeklyOrders','poTracking','schedule','reports','fieldMeasurements','accounting','pendingTasks'],
+    productionAssistant:  ['estimateBuilder','estimateBuilderSales','salesDashboard','estimatesManager','poTracking','fieldMeasurements','pendingTasks'],
+    purchasingManager:    ['weeklyOrders','poTracking','estimateBuilder','pendingTasks'],
+    accountingManager:    ['reports','poTracking','accounting','pendingTasks'],
+    accountAssistant:     ['poTracking','pendingTasks'],
+    ceo:                  ['reports','poTracking','accounting','pendingTasks'],
+    warehouseCoordinator: ['poTracking','schedule','pendingTasks'],
+    officeAssistant:      ['poTracking','schedule','pendingTasks'],
+    productionManager:    ['poTracking','schedule','weeklyOrders','fieldMeasurements','pendingTasks'],
+    salesRep:             ['estimateBuilderSales','salesDashboard','pendingTasks']
   };
   const DEFAULT_ROLE = 'admin'; // fallback only if ROLE_ACCESS_ENABLED were ever set back to false
 
@@ -451,6 +463,14 @@
       icon: '<circle cx="12" cy="12" r="10"/><path d="M12 6v12"/><path d="M15 9.5c0-1.5-1.5-2.5-3-2.5s-3 1-3 2.5 1.5 2 3 2.5 3 1 3 2.5-1.5 2.5-3 2.5-3-1-3-2.5"/>'
     },
     {
+      key: "pendingTasks", title: "Pending Tasks", audience: null,
+      tag: "Live", category: "Operations",
+      desc: "Assign and track tasks across the team, with role-based visibility.",
+      url: TOOL_URLS.pendingTasks,
+      img: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBAUEBAYFBQUGBgYHCQ4JCQgICRINDQoOFRIWFhUSFBQXGiEcFxgfGRQUHScdHyIjJSUlFhwpLCgkKyEkJST/2wBDAQYGBgkICREJCREkGBQYJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCT/wAARCAGQAoADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDcooor8nPCCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooqKScLwvJ/ShK4EjMFGScCoJJy3C8D9ajZixyTk0lWogXaKKKgAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiigkAZJwKACmvIqDk/hUUlx2T86hJJOScmqUe4D5JWfjoPSmUUVYBRRRQBdooorIAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKRmCjJOBUEk5bheB+tNK4Eskqpx1PpVd5Gc8n8KbRVpWAKKKKYBRRRQAUUUUAXaKKKyAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAoopryKg5P4UAOqKScLwvJ/SopJWfjoPSmVaj3AVmLHJOTSUUVQBRRRQAUUUUAFFFFABRRRQBdooorIAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKK7nQfhbeX0Mdzqdx9iR9reQqZl255Bzwpxj168gYxXThsJWxMuWjG5cKcpu0UcNRXrH/CptD/5+tS/7+J/8RR/wqbQ/+frUv+/if/EV6X+r2M7L7zb6pUPJ6K9Y/wCFTaH/AM/Wpf8AfxP/AIij/hU2h/8AP1qX/fxP/iKP9XsZ2X3h9UqHk9Fesf8ACptD/wCfrUv+/if/ABFH/CptD/5+tS/7+J/8RR/q9jOy+8PqlQ8nor1j/hU2h/8AP1qX/fxP/iKP+FTaH/z9al/38T/4ij/V7Gdl94fVKh5PRXrH/CptD/5+tS/7+J/8RR/wqbQ/+frUv+/if/EUf6vYzsvvD6pUPJ6K9Y/4VNof/P1qX/fxP/iKP+FTaH/z9al/38T/AOIo/wBXsZ2X3h9UqHk9Fesf8Km0P/n61L/v4n/xFH/CptD/AOfrUv8Av4n/AMRR/q9jOy+8PqlQ8nor1j/hU2h/8/Wpf9/E/wDi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/wAXZ/6nn/yao/4uz/1PP/k1QB9VUV8q/wDF2f8Aqef/ACao/wCLs/8AU8/+TVAH1VRXyr/xdn/qef8Ayao/4uz/ANTz/wCTVAH1VRXyr/xdn/qef/Jqj/i7P/U8/wDk1QB9VUV8q/8AF2f+p5/8mqP+Ls/9Tz/5NUAfVVFfKv8Axdn/AKnn/wAmq+gPhb/a3/CCaZ/bn27+0f3vnfbt/nf619u7f833cYz2xQB1VFFFAHzLRRRX5YeEFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFAF2iiisgCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD3zw1/yLmlf9ecP/oArRrO8Nf8AIuaV/wBecP8A6AK0a/UsP/Cj6I9uHwoK8d8afC7XR4jk1Xw8HuVuZmuciZYpLeUtuOCSOMnII5HQ9Mn2Kis8VhKeJioz6dialNTVmeE6x4K+I/iB431S1mujFu2b7qHC7mLHADYHJ/IAdAAOi+Gfwz1PRtXGta0v2WS23LBbq6uXLKVLMQSAMMcDqT6Ac+qUVy08oowqKq2213f/AADOOGipc12wooor1DoCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA+ZaKKK/LDwgooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKcsTv0GB6mgBtABJwBk1OtuB9459qlVQvQAVLkBXWBm6/KKlWBF68n3qSipcmAUUUUgCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD3zw1/yLmlf9ecP/AKAK0azvDX/IuaV/15w/+gCtGv1LD/wo+iPbh8KCiis/UNdtNOlEUm93xkrGAdv1ya2KNCisX/hLLH/nlc/98r/jV3TtXttT3CEsrr1RwAcev0pXQXLtFFFMAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAPmWiiivyw8IKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiigAk4AyaACipFgZuvyipVgRevJ96TkgK6qznCjNSrbn+I49hU/SipcgGrGqdBz606iipAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAPfPDX/IuaV/15w/8AoArRrO8Nf8i5pX/XnD/6AK0a/UsP/Cj6I9uHwoKxNCVTqeqttG4S4BxyAWb/AAFbdYGlXMNnqmppcyLCzybl8w7cjLev1FasZv1iXKqviu0IUAtESSB1OGH9BWn/AGlY/wDP5bf9/V/xrKaeO78UWz27iVY4iGZOQOG7/iPzoYG7WLrXiux0K6S2uYrl3ZBIDGqkYJI7kelbVYuteFLHXbpLm5luUdUEYEbKBgEnuD60PyGUP+FjaT/z733/AHwv/wAVR/wsbSf+fe+/74X/AOKo/wCFc6T/AM/F9/32v/xNH/CudJ/5+L7/AL7X/wCJpai1D/hY2k/8+99/3wv/AMVR/wALG0n/AJ977/vhf/iqP+Fc6T/z8X3/AH2v/wATR/wrnSf+fi+/77X/AOJo1DUP+FjaT/z733/fC/8AxVH/AAsbSf8An3vv++F/+Ko/4VzpP/Pxff8Afa//ABNH/CudJ/5+L7/vtf8A4mjUNQ/4WNpP/Pvff98L/wDFUf8ACxtJ/wCfe+/74X/4qj/hXOk/8/F9/wB9r/8AE0f8K50n/n4vv++1/wDiaNQ1D/hY2k/8+99/3wv/AMVR/wALG0n/AJ977/vhf/iqP+Fc6T/z8X3/AH2v/wATR/wrnSf+fi+/77X/AOJo1DUP+FjaT/z733/fC/8AxVH/AAsbSf8An3vv++F/+Ko/4VzpP/Pxff8Afa//ABNH/CudJ/5+L7/vtf8A4mjUNQ/4WNpP/Pvff98L/wDFVv6XqMWrWMV7ArrHJnAcAHgkdifSsD/hXOk/8/F9/wB9r/8AE1v6Xp0Wk2MVlAztHHnBcgnkk9gPWmr9QLVFFFMZ8y0UUV+WHhBRRRQAUUUUAFFFFABRRRQAUUUUAFFKqs5wozUq25/iOPYUN2AhpyxO/QYHqasrGqdBz606pcgIVtwPvHPtUqqF6ACloqW7gFFFFIAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD3zw1/yLmlf9ecP/oArRrO8Nf8i5pX/XnD/wCgCtGv1LD/AMKPoj24fCgqreaZZ37K1xCHZRgHJBx+FWqK2KM7/hHdL/59f/Ijf41as7C2sFZbaIRhjk8kk/ianoosAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQB8y0UUV+WHhBRRRQAUUUUAFFFOWJ36DA9TQA2gAk4AyanW3A+8c+1SqoXoAKlyArrAzdflFSrAi9eT71JRUuTAOlFFFIAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD3zw1/yLmlf9ecP/AKAK0azvDX/IuaV/15w/+gCtGv1LD/wo+iPbh8KCiisAm91rULmKK7a0itTs+QnLHJGTgj0P0/M1q2Ub9FYv9g33/Qauf/Hv/iqSylu9O1ZdOnuDdJMu9XYncvB9c+h4/H1ouI26KKKYwooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAPmWiigAk4Aya/LDwgoqRYGbr8oqVYEXryfek5ICuqs5wozUq25/iOPYVP0oqXIBqxqnQc+tOooqQCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAPfPDX/IuaV/15w/8AoArRrO8Nf8i5pX/XnD/6AK0a/UsP/Cj6I9uHwoKxdB/5COrf9dv/AGZq2qxJbLUdOvpp9ORJ0uDudZMDac59R6n/ADzWrGbdYt1/yNVn/wBcT/J6PtXiH/nwtv8Avof/ABVOsbC9uNRGoagFieMbI40xjGD9eOTRuBsVxfjT+2/7Ui/s3+0fJ8gZ+zb9u7c3XbxnGK7Sihq4zyz/AIqv/qOf+RaP+Kr/AOo5/wCRa9TopcorHln/ABVf/Uc/8i0f8VX/ANRz/wAi16nRRyhY8s/4qv8A6jn/AJFo/wCKr/6jn/kWvU6KOULHln/FV/8AUc/8i0f8VX/1HP8AyLXqdFHKFjyz/iq/+o5/5Fo/4qv/AKjn/kWvU6KOULHln/FV/wDUc/8AItH/ABVf/Uc/8i16nRRyhY8s/wCKr/6jn/kWu/8AC/2v+wrb7d5/2j59/n53/fOM556YrUoppWCwUUUUxnzYtuB9459qlVQvQAUtFflDdzwgooopAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFBIAyTgUAFNeRUHJ/CopLjsn51CSSck5NUo9wPojwwd3hvST62cJ/8cFaVZnhf/kWdI/68oP/AEAVp1+o0P4UfRHtw+FBRRRWpQUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAfOVFFFfk54QUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUjMFGScCoJJy3C8D9aaVwJZJVTjqfSq7yM55P4U2irSsAUUUUwPofwv8A8izpH/XlB/6AK06zPC//ACLOkf8AXlB/6AK06/TqH8KPoj24fCgooorUoKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAPnKiiivyc8IKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiimvIqDk/hQA6opJwvC8n9KiklZ+Og9KZVqPcBWYsck5NJRRVAFFFFABRRRQB734D1KPU/CenSJtDQxC3dQ+4qU+Xn0JADY9GH1rfrwnwX40ufCl3tYNNp8rZmgB5B/vr6N+hHB7Ee32N9banaRXlnMs1vKu5HXoR/Q9iOoNffZTj4Yiio396K1/zPWw9VTjbqieiiivVNwooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAqpq2oppOmXV/JtKwRs4Vm2hiBwufUnA/GrMsqQxvLK6xxoCzOxwFA6knsK8i8ceOH1+RrGxZo9NQ8nobgjufRfQfiecAedmWPhhKTk37z2X9dDGtVVON+pyNFFFfnB5AUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUEgDJOBTJJVTjqfSq7yM55P4U1G4Eklx2T86hJJOScmiitErAFFFFABRRRQAUUUUAFFFOWJ36DA9TQA2rmmaxqOkS+Zp15cWzFlYiNyA5XpuHRh14ORyaiW3A+8c+1SqoXoAKI1HF3i7ME2tUb6/EPxa3XVdo/694v/iakX4h+KB11Un/thF/8TXO0Vu8wxX/PyX3sv2s/5mdH/wALE8T/APQT/wDIEX/xNH/CxPE//QT/APIEX/xNc5RS+v4r/n7L73/mHtZ/zM6P/hYnif8A6Cf/AJAi/wDiaP8AhYnif/oJ/wDkCL/4mucoo+v4r/n7L73/AJh7Wf8AMzo/+FieJ/8AoJ/+QIv/AImj/hYnif8A6Cf/AJAi/wDia5yij6/iv+fsvvf+Ye1n/Mzo/wDhYnif/oJ/+QIv/iaP+FieJ/8AoJ/+QIv/AImucoo+v4r/AJ+y+9/5h7Wf8zOj/wCFieJ/+gn/AOQIv/iaP+FieJ/+gn/5Ai/+JrnKKPr+K/5+y+9/5h7Wf8zOj/4WJ4n/AOgn/wCQIv8A4mj/AIWJ4n/6Cf8A5Ai/+JrnKKPr+K/5+y+9/wCYe1n/ADM6P/hYnif/AKCf/kCL/wCJo/4WJ4n/AOgn/wCQIv8A4mucoo+v4r/n7L73/mHtZ/zM6P8A4WJ4n/6Cf/kCL/4mj/hYnif/AKCf/kCL/wCJrnKKPr+K/wCfsvvf+Ye1n/Mzo/8AhYnif/oJ/wDkCL/4mj/hYnif/oJ/+QIv/ia5yij6/iv+fsvvf+Ye1n/My/qmv6prLE399POpIbYWwgIGMhRwDj0Hc1QoormnOU3zTd2Q23qwoooqQCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooqKScLwvJ/ShK4EjMFGScCoJJy3C8D9ajZixyTk0lWogFFFFUAUUUUAFFFABJwBk0AFFSLAzdflFSrAi9eT70nJAV1VnOFGalW3P8Rx7Cp+lFS5ANWNU6Dn1p1FFSAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUEgDJOBQAU15FQcn8KikuOyfnUJJJyTk1Sj3AfJKz8dB6UyiirAKKKKACilVWc4UZqVbc/xHHsKG7AQ05YnfoMD1NWVjVOg59adUuQEK24H3jn2qVVC9ABS0VLdwCiiikAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFIzBRknAqCSctwvA/WmlcCWSVU46n0qu8jOeT+FNoq0rAFFFOWJ36DA9TTAbQAScAZNTrbgfeOfapVUL0AFS5AV1gZuvyipVgRevJ96koqXJgHSiiikAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRTXkVByfwoAdUUk4XheT+lRSSs/HQelMAJOAMmrUe4CsxY5JyaSpFgZuvyipVgRevJ96d0gK6qznCjNSrbn+I49hU/SipcgGrGqdBz606iipAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACgkAZJwKaz4OFG5vSmGJ5Dl2wPQU7ANkuOyfnTFjeQ5wfqasLGqdBz606ne2wEK24H3jn2qVVC9ABS0Um7gFFFFIAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigD/2Q==",
+      icon: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'
+    },
+    {
       key: "schedule", title: "Schedule", audience: null,
       tag: "Future", category: "Operations",
       desc: "Installer scheduling and project timelines. Under construction.",
@@ -482,7 +502,7 @@
     visibleTools.forEach(t => {
       const el = document.createElement(t.url ? 'a' : 'div');
       el.className = 'rail-item' + (t.url ? '' : ' disabled');
-      if (t.url){ el.href = t.url; el.target = '_blank'; el.rel = 'noopener'; }
+      if (t.url){ el.href = toolCardUrl(t); el.target = '_blank'; el.rel = 'noopener'; }
       el.innerHTML = `
         <span class="rail-tooltip">${t.title}${t.url ? '' : ' (coming soon)'}</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg>
@@ -554,7 +574,7 @@
 
     wrap.innerHTML = categories.map(cat => {
       const cards = visibleTools.filter(t => t.category === cat).map(t => `
-        <a class="tool-card${t.url ? '' : ' disabled'}" ${t.url ? `href="${t.url}" target="_blank" rel="noopener"` : ''}>
+        <a class="tool-card${t.url ? '' : ' disabled'}" ${t.url ? `href="${toolCardUrl(t)}" target="_blank" rel="noopener"` : ''}>
           <div class="card-banner"><img src="${t.img}" alt="${t.title}" loading="lazy"></div>
           <div class="card-body">
             ${t.audience ? `<div class="card-audience">${t.audience}</div>` : ''}
@@ -638,7 +658,13 @@
     const btn = document.getElementById('sendCodeBtn');
     btn.disabled = true; btn.textContent = 'Sending…';
     try{
-      const res = await fetch(APPS_SCRIPT_URL + '?action=requestLoginCode&email=' + encodeURIComponent(email));
+      // POST, not GET -- keeps the email address and the shared secret out
+      // of the URL/query string (and out of Apps Script's request logs).
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight
+        body: JSON.stringify({ action: 'requestLoginCode', key: APPS_SCRIPT_KEY, email: email })
+      });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Could not send the code.');
 
@@ -683,7 +709,7 @@
       const res = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight
-        body: JSON.stringify({ action: 'verifyLoginCode', email: pendingEmail, code: code })
+        body: JSON.stringify({ action: 'verifyLoginCode', key: APPS_SCRIPT_KEY, email: pendingEmail, code: code })
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Invalid or expired code.');
@@ -714,7 +740,23 @@
     document.getElementById('heroTitle').textContent = 'Welcome, ' + firstName;
     const initials = (session.name || session.email).trim().split(/\s+/).slice(0,2).map(w => w.charAt(0).toUpperCase()).join('');
     document.getElementById('userAvatar').textContent = initials;
+    currentUserEmail = session.email || null;
     renderHub(session.role);
+  }
+
+  // Set on showHub(); used only to prefill the email field on tools that
+  // have their own separate login (a convenience, not a security boundary --
+  // those tools still require a fresh one-time code either way).
+  let currentUserEmail = null;
+  // Tool keys whose login screen accepts an ?email= prefill param.
+  const EMAIL_PREFILL_TOOLS = ['pendingTasks'];
+  function toolCardUrl(t){
+    if (!t.url) return null;
+    if (currentUserEmail && EMAIL_PREFILL_TOOLS.indexOf(t.key) !== -1){
+      const sep = t.url.indexOf('?') === -1 ? '?' : '&';
+      return t.url + sep + 'email=' + encodeURIComponent(currentUserEmail);
+    }
+    return t.url;
   }
 
   function logout(){
