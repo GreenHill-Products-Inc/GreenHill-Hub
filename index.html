@@ -85,42 +85,47 @@
      as a small floating capsule/dock near the top-left instead of a sidebar. */
   /* Soft pastel-green glass panel -- translucent Light Green over a blur,
      not a solid fill, per your note ("medio transparente ... verde pastel"). */
+  /* Bigger + truly floating: fixed (not sticky) and vertically centered in
+     the viewport, so it reads as a dock hovering at mid-screen instead of
+     pinned near the top. Taken out of the flex flow, so .content-col gets
+     a matching margin-left below to leave room for it. */
   .side-rail{
-    width:58px; flex-shrink:0; background:rgba(168,216,90,.5); color:var(--dark);
+    width:72px; flex-shrink:0; background:rgba(168,216,90,.5); color:var(--dark);
     backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
     border:1px solid rgba(255,255,255,.5);
-    display:flex; flex-direction:column; align-items:center; padding:16px 0;
-    position:sticky; top:16px; z-index:20;
-    margin:16px 0 16px 16px; border-radius:24px;
+    display:flex; flex-direction:column; align-items:center; padding:22px 0;
+    position:fixed; top:50%; left:20px; transform:translateY(-50%); z-index:20;
+    border-radius:26px;
     box-shadow:0 10px 24px rgba(15,25,10,.15);
+    max-height:calc(100vh - 40px); overflow-y:auto;
   }
   .rail-logo{
-    width:32px; height:32px; border-radius:10px; background:#fff;
+    width:40px; height:40px; border-radius:11px; background:#fff;
     display:flex; align-items:center; justify-content:center;
-    margin-bottom:18px; flex-shrink:0; padding:4px;
+    margin-bottom:20px; flex-shrink:0; padding:5px;
   }
   .rail-logo img{ width:100%; height:100%; object-fit:contain; }
-  .rail-icons{ display:flex; flex-direction:column; gap:8px; flex:1; width:100%; align-items:center; }
+  .rail-icons{ display:flex; flex-direction:column; gap:9px; flex:1; width:100%; align-items:center; }
   /* Icons default to dark (readable on the pastel panel); hover flips to a
      solid dark chip with a white icon. Scaling itself is driven by JS
      (see initDockMagnify) so neighboring icons "bulge" too, like the macOS Dock. */
   .rail-item{
-    position:relative; width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+    position:relative; width:46px; height:46px; border-radius:14px; display:flex; align-items:center; justify-content:center;
     background:rgba(0,0,0,.07); color:var(--dark); text-decoration:none; cursor:pointer; border:none;
     transition:background .15s ease, color .15s ease, transform .1s ease-out;
   }
-  .rail-item svg{ width:17px; height:17px; }
-  .rail-item:hover{ background:var(--dark); color:#fff; }
+  .rail-item svg{ width:20px; height:20px; }
   .rail-item.disabled{ opacity:.4; cursor:not-allowed; pointer-events:none; }
   .rail-tooltip{
-    position:absolute; left:58px; top:50%; transform:translateY(-50%);
+    position:absolute; left:66px; top:50%; transform:translateY(-50%);
     background:var(--dark); color:#fff; font-size:11.5px; font-weight:600; white-space:nowrap;
     padding:7px 12px; border-radius:8px; opacity:0; pointer-events:none; transition:opacity .12s ease; z-index:30;
   }
   .rail-item:hover .rail-tooltip{ opacity:1; }
-  .rail-bottom{ display:flex; flex-direction:column; gap:8px; align-items:center; width:100%; margin-top:auto; }
+  .rail-bottom{ display:flex; flex-direction:column; gap:9px; align-items:center; width:100%; margin-top:auto; padding-top:9px; }
 
-  .content-col{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  /* Matches the rail's width (72px) + its left offset (20px) + breathing room. */
+  .content-col{ flex:1; min-width:0; display:flex; flex-direction:column; margin-left:128px; }
   .main{ flex:1; padding:0 0 40px; }
 
   .main-topbar{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:32px 36px 0; flex-wrap:wrap; }
@@ -194,8 +199,11 @@
   .tool-card.disabled .tag{ background:var(--amber-bg); color:var(--amber); }
 
   @media (max-width:720px){
-    .side-rail{ width:48px; padding:12px 0; }
-    .rail-logo{ width:26px; height:26px; margin-bottom:14px; }
+    .side-rail{ width:52px; left:10px; padding:14px 0; border-radius:20px; }
+    .rail-logo{ width:30px; height:30px; margin-bottom:14px; }
+    .rail-item{ width:38px; height:38px; border-radius:11px; }
+    .rail-item svg{ width:16px; height:16px; }
+    .content-col{ margin-left:78px; }
     .main-topbar{ padding:24px 18px 0; flex-direction:column; }
     .stat-row{ padding:20px 18px 0; }
     .section{ padding:24px 18px 0; }
@@ -224,6 +232,99 @@
   @media (max-width:720px){
     .section{ padding:26px 18px 0; }
   }
+
+  /* Only apply the rail's hover chip on devices that actually support
+     hovering -- on touch, :hover can otherwise "stick" after a tap until
+     the person taps elsewhere, which reads as a stuck/broken icon. */
+  @media (hover: hover){
+    .rail-item:hover{ background:var(--dark); color:#fff; }
+  }
+  @media (hover: none){
+    .rail-item:active{ background:var(--dark); color:#fff; }
+  }
+
+  /* Favorite star -- shown on tool cards, top-left of the banner. Filled
+     green when a tool is favorited (max 2), outline otherwise. */
+  .card-fav{
+    position:absolute; top:10px; left:10px; width:26px; height:26px; border-radius:8px;
+    background:rgba(255,255,255,.9); border:none; cursor:pointer; display:flex; align-items:center;
+    justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.12); z-index:5;
+  }
+  .card-fav svg{ width:14px; height:14px; color:var(--mid); }
+  .card-fav.active svg{ color:var(--green); fill:var(--green); }
+  .tool-card{ position:relative; }
+
+  /* "Continue where you left off" banner */
+  .continue-banner{
+    display:none; align-items:center; gap:12px; background:#fff; border:1px solid var(--border);
+    border-radius:14px; padding:12px 18px; margin:22px 36px 0;
+  }
+  .continue-banner svg{ width:18px; height:18px; color:var(--deep-green); flex-shrink:0; }
+  .continue-banner .cb-text{ font-size:12.5px; color:var(--charcoal); flex:1; }
+  .continue-banner .cb-text strong{ color:var(--dark); }
+  .continue-banner a{
+    font-size:12px; font-weight:700; color:#fff; background:var(--green); text-decoration:none;
+    padding:7px 14px; border-radius:8px; flex-shrink:0;
+  }
+  .continue-banner a:hover{ background:var(--deep-green); }
+  .continue-banner .cb-dismiss{
+    background:none; border:none; color:var(--mid); cursor:pointer; font-size:16px; padding:0 4px; flex-shrink:0;
+  }
+  @media (max-width:720px){ .continue-banner{ margin:18px 18px 0; flex-wrap:wrap; } }
+
+  /* Brief highlight pulse used when a stat card scrolls the page to a section */
+  @keyframes ghPulse{
+    0%{ box-shadow:0 0 0 0 rgba(118,188,33,.5); } 100%{ box-shadow:0 0 0 10px rgba(118,188,33,0); }
+  }
+  .tool-card.gh-highlight{ animation: ghPulse 1s ease-out 2; border-color:var(--green); }
+
+  .stat-card.clickable{ cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; }
+  .stat-card.clickable:hover{ transform:translateY(-2px); box-shadow:0 8px 20px rgba(20,30,15,.08); }
+
+  /* Generic centered modal shell, reused for "Your role" and the Cmd+K search */
+  .gh-modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(20,30,15,.35); backdrop-filter:blur(2px);
+    z-index:100; align-items:flex-start; justify-content:center; padding-top:12vh;
+  }
+  .gh-modal-overlay.open{ display:flex; }
+  .gh-modal{
+    background:#fff; border-radius:16px; width:100%; max-width:420px; margin:0 20px;
+    box-shadow:0 20px 60px rgba(0,0,0,.25); overflow:hidden; max-height:70vh; display:flex; flex-direction:column;
+  }
+  .gh-modal-head{ padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .gh-modal-head h3{ margin:0; font-size:14.5px; color:var(--dark); }
+  .gh-modal-close{ background:none; border:none; color:var(--mid); cursor:pointer; font-size:18px; line-height:1; }
+  .gh-modal-body{ padding:14px 22px 20px; overflow-y:auto; }
+  .gh-role-tool{ display:flex; align-items:center; gap:10px; padding:8px 0; font-size:13px; color:var(--charcoal); }
+  .gh-role-tool svg{ width:15px; height:15px; color:var(--deep-green); flex-shrink:0; }
+
+  /* Cmd+K search */
+  .search-hint{
+    display:flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--border);
+    border-radius:10px; padding:8px 12px; font-size:12px; color:var(--mid); cursor:pointer; flex-shrink:0;
+  }
+  .search-hint kbd{
+    font-family:inherit; background:var(--bg); border:1px solid var(--border); border-radius:5px;
+    padding:1px 6px; font-size:10.5px; color:var(--charcoal);
+  }
+  .search-hint:hover{ border-color:var(--light); }
+  .search-input-wrap{ padding:14px 22px; border-bottom:1px solid var(--border); }
+  .search-input-wrap input{
+    width:100%; border:none; outline:none; font-size:16px; color:var(--dark); font-family:inherit;
+  }
+  .search-result{
+    display:flex; align-items:center; gap:12px; padding:10px 8px; border-radius:10px; cursor:pointer;
+    text-decoration:none; color:inherit;
+  }
+  .search-result:hover, .search-result.active{ background:var(--bg); }
+  .search-result .sr-icon{
+    width:32px; height:32px; border-radius:9px; background:var(--mint); color:var(--deep-green);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .search-result .sr-icon svg{ width:16px; height:16px; }
+  .search-result .sr-title{ font-size:13px; font-weight:600; color:var(--dark); }
+  .search-result .sr-cat{ font-size:11px; color:var(--mid); }
+  .search-empty{ padding:20px 8px; text-align:center; color:var(--mid); font-size:12.5px; }
 </style>
 </head>
 <body>
@@ -260,7 +361,15 @@
     <div class="rail-logo"><img src="data:image/png;base64,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" alt="GreenHill"></div>
     <div class="rail-icons" id="railIcons"></div>
     <div class="rail-bottom">
-      <button class="rail-item" onclick="logout()">
+      <a class="rail-item" href="https://www.greenhillproducts.com" target="_blank" rel="noopener" aria-label="Company website">
+        <span class="rail-tooltip">Company website</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      </a>
+      <a class="rail-item" href="https://mail.herodata.com/interface/root#/login" target="_blank" rel="noopener" aria-label="Webmail">
+        <span class="rail-tooltip">Webmail</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+      </a>
+      <button class="rail-item" onclick="logout()" aria-label="Sign out">
         <span class="rail-tooltip">Sign out</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </button>
@@ -283,10 +392,15 @@
           </div>
           <div class="li-divider" id="weatherDivider" style="display:none;"></div>
           <div class="li-item" id="weatherItem" style="display:none;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a5 5 0 1 1 1-9.9A7 7 0 0 1 21 12a4.5 4.5 0 0 1-3.5 7Z"/></svg>
+            <span id="weatherIconWrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a5 5 0 1 1 1-9.9A7 7 0 0 1 21 12a4.5 4.5 0 0 1-3.5 7Z"/></svg></span>
             <span id="localWeather">--</span>
           </div>
         </div>
+
+        <button class="search-hint" onclick="openSearch()" aria-label="Search tools">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Search <kbd>⌘K</kbd>
+        </button>
 
         <div class="user-chip">
           <div class="avatar" id="userAvatar"></div>
@@ -295,6 +409,13 @@
             <div class="u-role" id="userRole">—</div>
           </div>
         </div>
+      </div>
+
+      <div class="continue-banner" id="continueBanner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        <span class="cb-text">Continue where you left off: <strong id="continueBannerTitle"></strong></span>
+        <a id="continueBannerLink" href="#" target="_blank" rel="noopener">Open</a>
+        <button class="cb-dismiss" onclick="dismissContinueBanner()" aria-label="Dismiss">×</button>
       </div>
 
       <div class="stat-row" id="statRow"></div>
@@ -314,11 +435,36 @@
       <div class="hub-footer-links">
         <a href="mailto:production.assistant2@greenhill-products.com">Support</a>
         <span class="hub-footer-dot">·</span>
+        <a href="https://www.greenhillproducts.com" target="_blank" rel="noopener">Website</a>
+        <span class="hub-footer-dot">·</span>
+        <a href="https://mail.herodata.com/interface/root#/login" target="_blank" rel="noopener">Webmail</a>
+        <span class="hub-footer-dot">·</span>
         <span>Internal use only — GreenHill Products Inc. employees and authorized contractors</span>
       </div>
       <div class="hub-footer-copy">© <span id="footerYear"></span> GreenHill Products Inc. All rights reserved.</div>
     </div>
   </footer>
+  </div>
+
+  <!-- "Your role" modal -->
+  <div class="gh-modal-overlay" id="roleModalOverlay" onclick="if(event.target===this) closeRoleModal()">
+    <div class="gh-modal">
+      <div class="gh-modal-head">
+        <h3>Tools included in your role</h3>
+        <button class="gh-modal-close" onclick="closeRoleModal()" aria-label="Close">×</button>
+      </div>
+      <div class="gh-modal-body" id="roleModalBody"></div>
+    </div>
+  </div>
+
+  <!-- Cmd+K search modal -->
+  <div class="gh-modal-overlay" id="searchModalOverlay" onclick="if(event.target===this) closeSearch()">
+    <div class="gh-modal">
+      <div class="search-input-wrap">
+        <input type="text" id="searchInput" placeholder="Search tools by name or category..." autocomplete="off">
+      </div>
+      <div class="gh-modal-body" id="searchResults"></div>
+    </div>
   </div>
 </div>
 
@@ -350,7 +496,7 @@
     salesDashboard:       "https://greenhill-products-inc.github.io/GreenHill---Dashboard/",
     estimatesManager:     "https://greenhill-products-inc.github.io/Estimates-Manager/",
     weeklyOrders:         "https://greenhill-products-inc.github.io/Weekly-Orders/",
-    poTracking:           "https://jcaguilera2704.github.io/Po_tracker/",
+    poTracking:           "https://greenhill-products-inc.github.io/Po_tracker/",
     // Placeholder -- update once pending-tasks-index.html is published to its
     // own GitHub Pages repo, then swap this for the real URL.
     pendingTasks:         "https://greenhill-products-inc.github.io/Pending-Tasks/"
@@ -367,6 +513,32 @@
   // republish both, otherwise every request from this page starts failing
   // with "Unauthorized."
   const APPS_SCRIPT_KEY = "fVkO0CgIYkFrHHGLSyHQwdGMkfASJL3l3MFa_cY_MCE";
+
+  // Wraps fetch() with a couple of retries and exponential backoff, so a
+  // flaky connection shows a real error only after actually trying a few
+  // times -- instead of one blank failure on the first hiccup. Only retries
+  // on network-level failures (fetch throwing, or a 5xx status); a resolved
+  // JSON response with ok:false is a normal application error, not a
+  // connectivity problem, so it's returned as-is on the first try.
+  async function fetchWithRetry(url, options, retries){
+    retries = retries == null ? 2 : retries;
+    let backoff = 600;
+    for (let attempt = 0; ; attempt++){
+      try{
+        const res = await fetch(url, options);
+        if (!res.ok && attempt < retries){
+          await new Promise(r => setTimeout(r, backoff));
+          backoff *= 2;
+          continue;
+        }
+        return res;
+      }catch(err){
+        if (attempt >= retries) throw err;
+        await new Promise(r => setTimeout(r, backoff));
+        backoff *= 2;
+      }
+    }
+  }
 
   // 4. ROLE-BASED ACCESS -- now ON, per the roles you defined.
   //    Requires the "Users" tab + hub_getUserRole (see
@@ -499,10 +671,15 @@
   function renderRail(visibleTools){
     const wrap = document.getElementById('railIcons');
     wrap.innerHTML = '';
-    visibleTools.forEach(t => {
+    orderWithFavoritesFirst(visibleTools).forEach(t => {
       const el = document.createElement(t.url ? 'a' : 'div');
       el.className = 'rail-item' + (t.url ? '' : ' disabled');
-      if (t.url){ el.href = toolCardUrl(t); el.target = '_blank'; el.rel = 'noopener'; }
+      const label = t.title + (t.url ? '' : ' (coming soon)') + (isFavorite(t.key) ? ' (favorite)' : '');
+      el.setAttribute('aria-label', label);
+      if (t.url){
+        el.href = toolCardUrl(t); el.target = '_blank'; el.rel = 'noopener';
+        el.addEventListener('click', () => recordToolOpen(t));
+      }
       el.innerHTML = `
         <span class="rail-tooltip">${t.title}${t.url ? '' : ' (coming soon)'}</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg>
@@ -531,25 +708,32 @@
     // color only where it actually means something.
     const stats = [
       {
+        // "Layers" -- reads as a stack of connected systems/tools rather than
+        // a plain 4-square grid.
         label: 'Available tools', value: String(visibleTools.length), color: 'var(--dark)',
-        icon: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'
+        icon: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>'
       },
       {
+        // "Pulse" -- a live signal/heartbeat line instead of a static checkmark.
         label: 'Live now', value: String(live), color: 'var(--deep-green)',
-        icon: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
+        icon: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+        onclick: "scrollToTag('Live')"
       },
       {
+        // "Trending up" -- forward-looking, matches "Future" better than a clock.
         label: 'Future', value: String(comingSoon), color: 'var(--amber)',
-        icon: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'
+        icon: '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+        onclick: "scrollToTag('Future')"
       },
       {
         label: 'Your role', value: roleLabel(role), color: 'var(--dark)',
-        icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
+        icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+        onclick: "openRoleModal()"
       }
     ];
 
     row.innerHTML = stats.map(s => `
-      <div class="stat-card">
+      <div class="stat-card${s.onclick ? ' clickable' : ''}" ${s.onclick ? `onclick="${s.onclick}" role="button" tabindex="0" aria-label="${s.label}: ${s.value}"` : ''}>
         <div class="stat-icon" style="background:${s.color}">
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${s.icon}</svg>
         </div>
@@ -559,6 +743,32 @@
         </div>
       </div>
     `).join('');
+  }
+
+  // #6 -- clicking "Live now"/"Future" scrolls to (and briefly highlights)
+  // the first tool card carrying that tag.
+  function scrollToTag(tag){
+    const card = Array.from(document.querySelectorAll('.tool-card')).find(el => el.dataset.tag === tag);
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('gh-highlight');
+    setTimeout(() => card.classList.remove('gh-highlight'), 2200);
+  }
+
+  // #8 -- "Your role" opens a read-only list of what that role can see,
+  // so people can self-serve instead of asking the admin.
+  function openRoleModal(){
+    const body = document.getElementById('roleModalBody');
+    body.innerHTML = currentVisibleTools.map(t => `
+      <div class="gh-role-tool">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg>
+        <span>${t.title}${t.url ? '' : ' (' + t.tag + ')'}</span>
+      </div>
+    `).join('') || '<div class="search-empty">No tools assigned yet.</div>';
+    document.getElementById('roleModalOverlay').classList.add('open');
+  }
+  function closeRoleModal(){
+    document.getElementById('roleModalOverlay').classList.remove('open');
   }
 
   // Tools grouped by category, one flat-card grid per section -- no tabs, no featured/grid split.
@@ -574,7 +784,13 @@
 
     wrap.innerHTML = categories.map(cat => {
       const cards = visibleTools.filter(t => t.category === cat).map(t => `
-        <a class="tool-card${t.url ? '' : ' disabled'}" ${t.url ? `href="${toolCardUrl(t)}" target="_blank" rel="noopener"` : ''}>
+        <a class="tool-card${t.url ? '' : ' disabled'}" data-tag="${t.tag}" aria-label="${t.title}${t.url ? '' : ' (' + t.tag + ')'}"
+           ${t.url ? `href="${toolCardUrl(t)}" target="_blank" rel="noopener" onclick="recordToolOpenByKey('${t.key}')"` : ''}>
+          <button class="card-fav${isFavorite(t.key) ? ' active' : ''}" title="${isFavorite(t.key) ? 'Remove from favorites' : 'Mark as favorite'}"
+                  aria-label="${isFavorite(t.key) ? 'Remove from favorites' : 'Mark as favorite'}"
+                  onclick="event.preventDefault(); event.stopPropagation(); toggleFavorite('${t.key}')">
+            <svg viewBox="0 0 24 24" fill="${isFavorite(t.key) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </button>
           <div class="card-banner"><img src="${t.img}" alt="${t.title}" loading="lazy"></div>
           <div class="card-body">
             ${t.audience ? `<div class="card-audience">${t.audience}</div>` : ''}
@@ -598,13 +814,79 @@
   }
 
   let currentRole = null;
+  let currentVisibleTools = []; // kept around for the Cmd+K search
 
   function renderHub(role){
     currentRole = role;
     const visibleTools = visibleToolsForRole(role);
+    currentVisibleTools = visibleTools;
     renderRail(visibleTools);
     renderStats(visibleTools, role);
     renderSections(visibleTools);
+    renderContinueBanner(visibleTools);
+  }
+
+  /* ================= FAVORITES (up to 2, pinned first in the rail) ================= */
+  const FAVORITES_KEY = 'gh_hub_favorites';
+  const MAX_FAVORITES = 2;
+
+  function getFavorites(){
+    try{ return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); }
+    catch(e){ return []; }
+  }
+  function isFavorite(key){ return getFavorites().indexOf(key) !== -1; }
+  function toggleFavorite(key){
+    let favs = getFavorites();
+    if (favs.indexOf(key) !== -1){
+      favs = favs.filter(k => k !== key);
+    } else {
+      if (favs.length >= MAX_FAVORITES) favs.shift(); // drop the oldest to make room
+      favs.push(key);
+    }
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
+    renderHub(currentRole); // re-render so the rail order + star states update
+  }
+  // Favorited tools first (in the order favorited), everything else keeps its
+  // original order -- used only for the rail, so the grid below stays grouped
+  // by category regardless.
+  function orderWithFavoritesFirst(tools){
+    const favs = getFavorites();
+    const favored = favs.map(k => tools.find(t => t.key === k)).filter(Boolean);
+    const rest = tools.filter(t => favs.indexOf(t.key) === -1);
+    return favored.concat(rest);
+  }
+
+  /* ================= "CONTINUE WHERE YOU LEFT OFF" ================= */
+  const LAST_TOOL_KEY = 'gh_hub_last_tool';
+  const LAST_TOOL_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+  const CONTINUE_DISMISSED_KEY = 'gh_hub_continue_dismissed'; // per-tab, via sessionStorage
+
+  function recordToolOpen(t){
+    try{
+      localStorage.setItem(LAST_TOOL_KEY, JSON.stringify({ key: t.key, title: t.title, ts: Date.now() }));
+    }catch(e){ /* localStorage unavailable -- not worth failing navigation over */ }
+  }
+  function recordToolOpenByKey(key){
+    const t = TOOLS.find(x => x.key === key);
+    if (t) recordToolOpen(t);
+  }
+
+  function renderContinueBanner(visibleTools){
+    const banner = document.getElementById('continueBanner');
+    if (sessionStorage.getItem(CONTINUE_DISMISSED_KEY)){ banner.style.display = 'none'; return; }
+    let last;
+    try{ last = JSON.parse(localStorage.getItem(LAST_TOOL_KEY) || 'null'); }catch(e){ last = null; }
+    if (!last || (Date.now() - last.ts) > LAST_TOOL_MAX_AGE_MS){ banner.style.display = 'none'; return; }
+    const tool = visibleTools.find(t => t.key === last.key);
+    if (!tool || !tool.url){ banner.style.display = 'none'; return; }
+    document.getElementById('continueBannerTitle').textContent = tool.title;
+    document.getElementById('continueBannerLink').href = toolCardUrl(tool);
+    document.getElementById('continueBannerLink').onclick = () => recordToolOpen(tool);
+    banner.style.display = 'flex';
+  }
+  function dismissContinueBanner(){
+    sessionStorage.setItem(CONTINUE_DISMISSED_KEY, '1');
+    document.getElementById('continueBanner').style.display = 'none';
   }
 
   /* ================= AUTHENTICATION (email one-time code) ================= */
@@ -660,7 +942,7 @@
     try{
       // POST, not GET -- keeps the email address and the shared secret out
       // of the URL/query string (and out of Apps Script's request logs).
-      const res = await fetch(APPS_SCRIPT_URL, {
+      const res = await fetchWithRetry(APPS_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight
         body: JSON.stringify({ action: 'requestLoginCode', key: APPS_SCRIPT_KEY, email: email })
@@ -706,7 +988,7 @@
     const btn = document.getElementById('verifyCodeBtn');
     btn.disabled = true; btn.textContent = 'Verifying…';
     try{
-      const res = await fetch(APPS_SCRIPT_URL, {
+      const res = await fetchWithRetry(APPS_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight
         body: JSON.stringify({ action: 'verifyLoginCode', key: APPS_SCRIPT_KEY, email: pendingEmail, code: code })
@@ -737,7 +1019,7 @@
     document.getElementById('userName').title = session.email;
     document.getElementById('userRole').textContent = session.role ? roleLabel(session.role) : 'No role assigned';
     const firstName = (session.name || session.email).trim().split(/\s+/)[0];
-    document.getElementById('heroTitle').textContent = 'Welcome, ' + firstName;
+    document.getElementById('heroTitle').textContent = greetingForNow() + ', ' + firstName;
     const initials = (session.name || session.email).trim().split(/\s+/).slice(0,2).map(w => w.charAt(0).toUpperCase()).join('');
     document.getElementById('userAvatar').textContent = initials;
     currentUserEmail = session.email || null;
@@ -777,6 +1059,14 @@
     });
   }
 
+  // Same clock/timezone logic, just used for the hero greeting instead.
+  function greetingForNow(){
+    const hour = Number(new Date().toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', hour12: false }));
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  }
+
   // Free, keyless weather API (Open-Meteo) -- no signup, no billing, CORS-enabled.
   const WEATHER_CODE_LABELS = {
     0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast',
@@ -787,17 +1077,56 @@
     80: 'Rain showers', 81: 'Rain showers', 82: 'Heavy showers',
     95: 'Thunderstorm', 96: 'Thunderstorm', 99: 'Thunderstorm'
   };
+  // #7 -- a real icon per condition group, swapped into #weatherIconWrap,
+  // instead of one fixed cloud icon regardless of the actual weather.
+  const WEATHER_CODE_ICONS = {
+    clear: '<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/>',
+    cloud: '<path d="M17.5 19H9a5 5 0 1 1 1-9.9A7 7 0 0 1 21 12a4.5 4.5 0 0 1-3.5 7Z"/>',
+    rain: '<path d="M16 13v8"/><path d="M8 13v8"/><path d="M12 15v8"/><path d="M17.5 10H9a5 5 0 1 1 1-9.9A7 7 0 0 1 21 3a4.5 4.5 0 0 1-3.5 7Z" transform="translate(0,-1)"/>',
+    snow: '<path d="M17.5 10H9a5 5 0 1 1 1-9.9A7 7 0 0 1 21 3a4.5 4.5 0 0 1-3.5 7Z" transform="translate(0,-1)"/><line x1="8" y1="16" x2="8" y2="16.01"/><line x1="8" y1="20" x2="8" y2="20.01"/><line x1="12" y1="18" x2="12" y2="18.01"/><line x1="12" y1="22" x2="12" y2="22.01"/><line x1="16" y1="16" x2="16" y2="16.01"/><line x1="16" y1="20" x2="16" y2="20.01"/>',
+    storm: '<path d="M17.5 10H9a5 5 0 1 1 1-9.9A7 7 0 0 1 21 3a4.5 4.5 0 0 1-3.5 7Z" transform="translate(0,-1)"/><polyline points="13 12 9 20 12 20 11 24"/>',
+    fog: '<line x1="3" y1="8" x2="21" y2="8"/><line x1="5" y1="12" x2="19" y2="12"/><line x1="3" y1="16" x2="21" y2="16"/>'
+  };
+  function weatherIconKeyFor(code){
+    if (code === 0 || code === 1) return 'clear';
+    if (code === 2 || code === 3) return 'cloud';
+    if (code === 45 || code === 48) return 'fog';
+    if ((code >= 51 && code <= 65) || (code >= 80 && code <= 82)) return 'rain';
+    if (code >= 71 && code <= 75) return 'snow';
+    if (code >= 95) return 'storm';
+    return 'cloud';
+  }
+  function renderWeather(cw){
+    const label = WEATHER_CODE_LABELS[cw.weathercode] || 'Weather';
+    document.getElementById('localWeather').textContent = Math.round(cw.temperature) + '°F, ' + label;
+    const iconKey = weatherIconKeyFor(cw.weathercode);
+    document.getElementById('weatherIconWrap').innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + WEATHER_CODE_ICONS[iconKey] + '</svg>';
+    document.getElementById('weatherItem').style.display = 'flex';
+    document.getElementById('weatherDivider').style.display = 'block';
+  }
+
+  // #37 -- cache the weather in sessionStorage for 10 minutes so navigating
+  // back to the Hub within that window doesn't re-fetch the same reading.
+  const WEATHER_CACHE_KEY = 'gh_hub_weather_cache';
+  const WEATHER_CACHE_MAX_AGE_MS = 10 * 60 * 1000;
 
   async function loadLocalWeather(){
     try{
-      const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=33.6891&longitude=-78.8867&current_weather=true&temperature_unit=fahrenheit');
+      const cachedRaw = sessionStorage.getItem(WEATHER_CACHE_KEY);
+      if (cachedRaw){
+        const cached = JSON.parse(cachedRaw);
+        if (Date.now() - cached.ts < WEATHER_CACHE_MAX_AGE_MS){
+          renderWeather(cached.cw);
+          return;
+        }
+      }
+      const res = await fetchWithRetry('https://api.open-meteo.com/v1/forecast?latitude=33.6891&longitude=-78.8867&current_weather=true&temperature_unit=fahrenheit');
       const data = await res.json();
       const cw = data && data.current_weather;
       if (!cw) return;
-      const label = WEATHER_CODE_LABELS[cw.weathercode] || 'Weather';
-      document.getElementById('localWeather').textContent = Math.round(cw.temperature) + '°F, ' + label;
-      document.getElementById('weatherItem').style.display = 'flex';
-      document.getElementById('weatherDivider').style.display = 'block';
+      sessionStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({ cw: cw, ts: Date.now() }));
+      renderWeather(cw);
     }catch(err){
       // Silent fail -- the clock still shows, weather pill just stays hidden.
     }
@@ -834,6 +1163,49 @@
     });
   }
 
+  /* ================= #20 -- Cmd+K / Ctrl+K SEARCH ================= */
+  let searchActiveIndex = -1;
+
+  function openSearch(){
+    document.getElementById('searchModalOverlay').classList.add('open');
+    const input = document.getElementById('searchInput');
+    input.value = '';
+    renderSearchResults('');
+    setTimeout(() => input.focus(), 0);
+  }
+  function closeSearch(){
+    document.getElementById('searchModalOverlay').classList.remove('open');
+  }
+  function openToolFromSearch(key){
+    const t = currentVisibleTools.find(x => x.key === key);
+    if (!t || !t.url) return;
+    recordToolOpen(t);
+    window.open(toolCardUrl(t), '_blank', 'noopener');
+    closeSearch();
+  }
+  function renderSearchResults(query){
+    const q = query.trim().toLowerCase();
+    const results = currentVisibleTools.filter(t =>
+      t.title.toLowerCase().includes(q) || t.category.toLowerCase().includes(q)
+    );
+    searchActiveIndex = results.length ? 0 : -1;
+    const box = document.getElementById('searchResults');
+    if (!results.length){
+      box.innerHTML = '<div class="search-empty">No tools match &ldquo;' + query + '&rdquo;.</div>';
+      return;
+    }
+    box.innerHTML = results.map((t, i) => `
+      <a class="search-result${i === 0 ? ' active' : ''}${t.url ? '' : ' disabled'}" data-key="${t.key}"
+         ${t.url ? `onclick="openToolFromSearch('${t.key}')"` : ''}>
+        <div class="sr-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg></div>
+        <div>
+          <div class="sr-title">${t.title}</div>
+          <div class="sr-cat">${t.category}${t.url ? '' : ' · ' + t.tag}</div>
+        </div>
+      </a>
+    `).join('');
+  }
+
   window.onload = function(){
     document.getElementById('hubScreen').style.display = 'none';
     document.getElementById('footerYear').textContent = new Date().getFullYear();
@@ -855,6 +1227,22 @@
 
     document.getElementById('loginEmail').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendCode(); });
     document.getElementById('loginCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') verifyCode(); });
+
+    // Cmd+K / Ctrl+K opens the tool search from anywhere in the Hub; Escape
+    // closes whichever modal (search or role) is currently open.
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k'){
+        e.preventDefault();
+        openSearch();
+        return;
+      }
+      if (e.key === 'Escape'){
+        closeSearch();
+        closeRoleModal();
+      }
+    });
+
+    document.getElementById('searchInput').addEventListener('input', (e) => renderSearchResults(e.target.value));
   };
 </script>
 </body>
