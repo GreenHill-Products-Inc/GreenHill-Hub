@@ -325,6 +325,44 @@
   .search-result .sr-title{ font-size:13px; font-weight:600; color:var(--dark); }
   .search-result .sr-cat{ font-size:11px; color:var(--mid); }
   .search-empty{ padding:20px 8px; text-align:center; color:var(--mid); font-size:12.5px; }
+
+  /* #5 -- who's online. A small stack of initials-avatars with a live green
+     dot, plus a text count; hovering (or tapping) opens a short name list.
+     Presence itself comes from a heartbeat the Hub (and Pending Tasks) send
+     every ~60s -- see presence_heartbeat/presence_onlineUsers in the .gs file. */
+  .presence-widget{
+    position:relative; display:none; align-items:center; gap:8px; background:#fff;
+    border:1px solid var(--border); border-radius:12px; padding:7px 12px 7px 8px; flex-shrink:0; cursor:pointer;
+  }
+  .presence-stack{ display:flex; }
+  .presence-dot{
+    width:24px; height:24px; border-radius:50%; background:var(--charcoal); color:#fff;
+    font-size:9.5px; font-weight:700; display:flex; align-items:center; justify-content:center;
+    border:2px solid #fff; margin-left:-8px; position:relative; flex-shrink:0;
+  }
+  .presence-dot:first-child{ margin-left:0; }
+  .presence-dot::after{
+    content:''; position:absolute; bottom:-1px; right:-1px; width:8px; height:8px; border-radius:50%;
+    background:var(--green); border:2px solid #fff;
+  }
+  .presence-count{ font-size:12px; font-weight:600; color:var(--charcoal); white-space:nowrap; }
+  .presence-pop{
+    display:none; position:absolute; top:calc(100% + 8px); right:0; background:#fff; border:1px solid var(--border);
+    border-radius:12px; box-shadow:0 12px 28px rgba(20,30,15,.12); padding:10px; min-width:190px; z-index:40;
+  }
+  .presence-widget.open .presence-pop{ display:block; }
+  .presence-pop-row{ display:flex; align-items:center; gap:9px; padding:6px 4px; font-size:12.5px; color:var(--dark); }
+  .presence-pop-row .presence-dot{ margin-left:0; }
+  .presence-pop-role{ font-size:10.5px; color:var(--mid); }
+
+  /* #15 -- tiny backend health pill in the footer */
+  .backend-status{ display:inline-flex; align-items:center; gap:6px; }
+  .backend-status .bs-dot{ width:7px; height:7px; border-radius:50%; background:var(--mid); flex-shrink:0; }
+  .backend-status.ok .bs-dot{ background:var(--green); }
+  .backend-status.down .bs-dot{ background:var(--red); }
+
+  /* #10 -- Estimates pending stat card, appended once its data loads */
+  .stat-card.stat-loading{ opacity:.5; }
 </style>
 </head>
 <body>
@@ -397,6 +435,12 @@
           </div>
         </div>
 
+        <div class="presence-widget" id="presenceWidget" onclick="togglePresencePop(event)" aria-label="Who's online">
+          <div class="presence-stack" id="presenceStack"></div>
+          <span class="presence-count" id="presenceCount"></span>
+          <div class="presence-pop" id="presencePop"></div>
+        </div>
+
         <button class="search-hint" onclick="openSearch()" aria-label="Search tools">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           Search <kbd>⌘K</kbd>
@@ -440,6 +484,8 @@
         <a href="https://mail.herodata.com/interface/root#/login" target="_blank" rel="noopener">Webmail</a>
         <span class="hub-footer-dot">·</span>
         <span>Internal use only — GreenHill Products Inc. employees and authorized contractors</span>
+        <span class="hub-footer-dot">·</span>
+        <span class="backend-status" id="backendStatus"><span class="bs-dot"></span><span id="backendStatusText">Checking backend…</span></span>
       </div>
       <div class="hub-footer-copy">© <span id="footerYear"></span> GreenHill Products Inc. All rights reserved.</div>
     </div>
@@ -1001,6 +1047,12 @@
         email: data.email,
         name: data.name || nameFromEmail(data.email),
         role: role,
+        // Captured so tools with true SSO (currently just Pending Tasks) can
+        // skip their own one-time-code screen -- see toolCardUrl() and
+        // tasks_requireSession in apps-script-additions-ALL.gs. Previously
+        // returned by the backend but discarded here, which is why Pending
+        // Tasks kept asking for a second code after a Hub login.
+        sessionToken: data.sessionToken || null,
         exp: Date.now() + SESSION_LENGTH_MS
       };
       sessionStorage.setItem('gh_hub_session', JSON.stringify(session));
@@ -1023,29 +1075,166 @@
     const initials = (session.name || session.email).trim().split(/\s+/).slice(0,2).map(w => w.charAt(0).toUpperCase()).join('');
     document.getElementById('userAvatar').textContent = initials;
     currentUserEmail = session.email || null;
+    currentSessionToken = session.sessionToken || null;
     renderHub(session.role);
+    loadEstimatesSummary();
+    startPresence(session);
+    checkBackendStatus();
   }
 
   // Set on showHub(); used only to prefill the email field on tools that
   // have their own separate login (a convenience, not a security boundary --
   // those tools still require a fresh one-time code either way).
   let currentUserEmail = null;
+  // True SSO token for tools that verify it server-side (tasks_requireSession)
+  // instead of just trusting the prefilled email -- currently only Pending Tasks.
+  let currentSessionToken = null;
   // Tool keys whose login screen accepts an ?email= prefill param.
   const EMAIL_PREFILL_TOOLS = ['pendingTasks'];
+  // Tool keys that additionally accept a real ?sessionToken= and skip their
+  // own code screen entirely when it resolves -- must be a subset of
+  // EMAIL_PREFILL_TOOLS above.
+  const SSO_TOOLS = ['pendingTasks'];
   function toolCardUrl(t){
     if (!t.url) return null;
+    let url = t.url;
     if (currentUserEmail && EMAIL_PREFILL_TOOLS.indexOf(t.key) !== -1){
-      const sep = t.url.indexOf('?') === -1 ? '?' : '&';
-      return t.url + sep + 'email=' + encodeURIComponent(currentUserEmail);
+      const sep = url.indexOf('?') === -1 ? '?' : '&';
+      url += sep + 'email=' + encodeURIComponent(currentUserEmail);
+      if (currentSessionToken && SSO_TOOLS.indexOf(t.key) !== -1){
+        url += '&sessionToken=' + encodeURIComponent(currentSessionToken);
+      }
     }
-    return t.url;
+    return url;
   }
 
   function logout(){
     sessionStorage.removeItem('gh_hub_session');
+    stopPresence();
     document.getElementById('hubScreen').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
     useAnotherEmail();
+  }
+
+  /* ================= #11+#13 -- Estimates pending KPI ================= */
+  // Loaded separately from the rest of the stat row because it's a second
+  // network call (a lightweight one -- see em_summary in the .gs file) --
+  // the four core stats render instantly from data already in memory, this
+  // one fills in a moment later without blocking the rest of the page.
+  async function loadEstimatesSummary(){
+    if (!currentVisibleTools.some(t => t.key === 'estimatesManager')) return; // nothing to deep-link to
+    try{
+      const url = APPS_SCRIPT_URL + '?action=estimatesSummary&key=' + encodeURIComponent(APPS_SCRIPT_KEY);
+      const res = await fetchWithRetry(url, undefined, 1);
+      const data = await res.json();
+      if (!data.ok) return;
+      const row = document.getElementById('statRow');
+      const card = document.createElement('div');
+      card.className = 'stat-card clickable';
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-label', 'Estimates pending: ' + data.pending);
+      card.onclick = () => {
+        window.open(TOOL_URLS.estimatesManager + '?status=pending', '_blank', 'noopener');
+      };
+      card.innerHTML = `
+        <div class="stat-icon" style="background:var(--amber)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+        </div>
+        <div>
+          <div class="stat-label">Estimates pending</div>
+          <div class="stat-value">${data.pending}</div>
+        </div>
+      `;
+      row.appendChild(card);
+    }catch(err){ /* silent -- the rest of the Hub still works without this card */ }
+  }
+
+  /* ================= #5 -- online presence ================= */
+  let presenceInterval = null, presencePollInterval = null;
+  let lastOnlineList = [];
+
+  function startPresence(session){
+    sendHeartbeat(session);
+    presenceInterval = setInterval(() => sendHeartbeat(session), 60 * 1000);
+    pollOnlineUsers();
+    presencePollInterval = setInterval(pollOnlineUsers, 45 * 1000);
+  }
+  function stopPresence(){
+    if (presenceInterval) clearInterval(presenceInterval);
+    if (presencePollInterval) clearInterval(presencePollInterval);
+    presenceInterval = presencePollInterval = null;
+    document.getElementById('presenceWidget').style.display = 'none';
+  }
+  async function sendHeartbeat(session){
+    try{
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'heartbeat', key: APPS_SCRIPT_KEY,
+          email: session.email, name: session.name, role: session.role, tool: 'Hub'
+        })
+      });
+    }catch(err){ /* a missed heartbeat just means one less "online" tick -- not worth surfacing */ }
+  }
+  async function pollOnlineUsers(){
+    try{
+      const url = APPS_SCRIPT_URL + '?action=onlineUsers&key=' + encodeURIComponent(APPS_SCRIPT_KEY);
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!data.ok) return;
+      lastOnlineList = data.online || [];
+      renderPresence(lastOnlineList);
+    }catch(err){ /* silent -- widget just stays hidden/stale */ }
+  }
+  function initialsFor(name){
+    return String(name || '?').trim().split(/\s+/).slice(0,2).map(w => w.charAt(0).toUpperCase()).join('');
+  }
+  function renderPresence(online){
+    const widget = document.getElementById('presenceWidget');
+    if (!online.length){ widget.style.display = 'none'; return; }
+    widget.style.display = 'flex';
+    const shown = online.slice(0, 4);
+    document.getElementById('presenceStack').innerHTML = shown.map(p =>
+      `<div class="presence-dot" title="${p.name}">${initialsFor(p.name)}</div>`
+    ).join('');
+    document.getElementById('presenceCount').textContent =
+      online.length === 1 ? '1 online' : online.length + ' online';
+    document.getElementById('presencePop').innerHTML = online.map(p => `
+      <div class="presence-pop-row">
+        <div class="presence-dot">${initialsFor(p.name)}</div>
+        <div><div>${p.name}</div><div class="presence-pop-role">${roleLabel(p.role)}</div></div>
+      </div>
+    `).join('');
+  }
+  function togglePresencePop(e){
+    e.stopPropagation();
+    document.getElementById('presenceWidget').classList.toggle('open');
+  }
+  document.addEventListener('click', () => {
+    const w = document.getElementById('presenceWidget');
+    if (w) w.classList.remove('open');
+  });
+
+  /* ================= #15 -- backend health strip ================= */
+  async function checkBackendStatus(){
+    const pill = document.getElementById('backendStatus');
+    const text = document.getElementById('backendStatusText');
+    try{
+      const url = APPS_SCRIPT_URL + '?key=' + encodeURIComponent(APPS_SCRIPT_KEY); // no action -> default "running" ping
+      const res = await fetchWithRetry(url, undefined, 1);
+      const data = await res.json();
+      if (data && data.ok){
+        pill.className = 'backend-status ok';
+        text.textContent = 'All systems operational';
+      } else {
+        throw new Error('unexpected response');
+      }
+    }catch(err){
+      pill.className = 'backend-status down';
+      text.textContent = 'Backend unreachable';
+    }
   }
 
   /* ================= LOCAL TIME + WEATHER (Myrtle Beach, SC) ================= */
