@@ -16,23 +16,73 @@
     --green:#76BC21; --deep-green:#5A9A18; --light:#A8D85A; --sidebar:#1A2318;
     --mint:#EAFAD2; --charcoal:#555555; --dark:#333333; --mid:#888886;
     --border:#DDDDDB; --bg:#F5F5F2; --amber:#D68910; --amber-bg:#FEF9E7;
-    --red:#C0392B; --red-bg:#FDECEA;
+    --red:#C0392B; --red-bg:#FDECEA; --card:#ffffff;
+    /* Fixed literal near-black -- NOT theme-aware, unlike --dark below. Used
+       only by the handful of spots that need an always-dark chip regardless
+       of light/dark mode (the rail's hover state, its tooltip, the presence
+       avatar dots, and two "always dark" stat-icon chips) -- everywhere else
+       uses --dark, which DOES flip in dark mode since it's the primary text
+       color. Mixing these up would make text invisible or chips low-contrast
+       once dark mode is on, so keep new "always dark" chips on --ink, and
+       new body-text colors on --dark. */
+    --ink:#333333;
     /* Sidebar now uses the official "GreenHill Green" from the brand style
        guide (--green, #76BC21) rather than a sampled logo color. Kept as its
        own variable in case the rail ever needs to diverge from --green again. */
     --sidebar-green:#76BC21;
   }
+  /* Dark mode -- same palette as Pending Tasks' theme toggle, for a
+     consistent look across both tools. Accent colors (green/red/amber) and
+     --ink stay fixed on purpose; only text/surface tones flip. */
+  body[data-theme="dark"]{
+    --charcoal:#C7C7C4; --dark:#F1F1EE; --mid:#9A9A96;
+    --border:#3A3E37; --bg:#1C201B; --card:#252A24;
+    --mint:#1F2E15; --amber-bg:#332A11; --red-bg:#3A1E1B;
+  }
   *{box-sizing:border-box;}
   body{
     margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    color:var(--dark); min-height:100vh; background:#fff;
+    color:var(--dark); min-height:100vh; background:var(--bg);
+    transition:background .2s ease, color .2s ease;
   }
+
+  /* ---------- MOTION -- shared entrance/feedback animations used across the
+     Hub so the page feels alive instead of static. Kept as reusable keyframes
+     + a couple of small utility classes rather than one-off inline animations,
+     so the same motion language is easy to reuse anywhere new gets added. ---------- */
+  @keyframes cardIn{
+    from{ opacity:0; transform:translateY(16px) scale(.98); }
+    to{ opacity:1; transform:translateY(0) scale(1); }
+  }
+  @keyframes fadeSlideDown{
+    from{ opacity:0; transform:translateY(-10px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  @keyframes fadeScaleIn{
+    from{ opacity:0; transform:scale(.94); }
+    to{ opacity:1; transform:scale(1); }
+  }
+  @keyframes railIn{
+    from{ opacity:0; transform:translateX(-14px); }
+    to{ opacity:1; transform:translateX(0); }
+  }
+  @keyframes livePulse{
+    0%{ box-shadow:0 0 0 0 rgba(118,188,33,.55); }
+    70%{ box-shadow:0 0 0 8px rgba(118,188,33,0); }
+    100%{ box-shadow:0 0 0 0 rgba(118,188,33,0); }
+  }
+  @keyframes spinLoad{ to{ transform:rotate(360deg); } }
+  /* Buttons/icons get a quick, satisfying "press" on click everywhere in the
+     Hub -- purely visual feedback, no layout impact since it's a transform. */
+  button, .tool-card, .rail-item, a.tool-card{ -webkit-tap-highlight-color:transparent; }
+  .theme-toggle:active, .search-hint:active, .presence-widget:active,
+  .rail-item:active, .card-fav:active, .gh-modal-close:active{ transform:scale(.9); }
   /* Glass, done right on a plain white page: blur only matters when there's something
      behind a surface to blur (a sticky bar over scrolling content, a modal backdrop).
      Everything else is a clean, mostly-opaque card with a soft shadow and a hairline
      border -- that's what keeps text sharp and readable. */
   .glass{
-    background:#fff; border:1px solid var(--border);
+    background:var(--card); border:1px solid var(--border);
     box-shadow:0 4px 16px rgba(20,30,15,.06);
   }
 
@@ -41,15 +91,23 @@
     display:flex; align-items:center; justify-content:center; min-height:100vh;
     background:linear-gradient(160deg, var(--sidebar) 0%, #223324 55%, var(--sidebar) 100%);
   }
+  /* The login card is always a plain white surface, regardless of the
+     in-app dark mode setting -- it's the pre-auth screen, shown before
+     applyTheme() has any real UI to theme. Colors here are hardcoded on
+     purpose (NOT the --dark/--mid/--border vars, which flip in dark mode)
+     so this card never ends up with pale, unreadable text on a white
+     background if someone's last session was in dark mode. */
   .login-card{
     background:#fff; border-radius:16px; padding:44px 44px 36px; width:100%; max-width:440px;
     box-shadow:0 20px 60px rgba(0,0,0,.35); text-align:center;
+    animation:fadeScaleIn .5s cubic-bezier(.16,1,.3,1) both;
   }
+  .login-card .logo-big{ animation:fadeSlideDown .6s cubic-bezier(.16,1,.3,1) .1s both; }
   .login-card .logo-big{ width:100%; max-width:320px; height:auto; display:block; margin:0 auto 22px; }
-  .login-card h1{ font-size:19px; margin:0 0 6px; color:var(--dark); }
-  .login-card p{ font-size:13px; color:var(--mid); margin:0 0 26px; line-height:1.5; }
-  .auth-step input[type=email], .auth-step input[type=text]{
-    width:100%; padding:11px 14px; border:1px solid var(--border); border-radius:8px;
+  .login-card h1{ font-size:19px; margin:0 0 6px; color:#333333; }
+  .login-card p{ font-size:13px; color:#888886; margin:0 0 26px; line-height:1.5; }
+  .auth-step input[type=email], .auth-step input[type=text], .auth-step input[type=password]{
+    width:100%; padding:11px 14px; border:1px solid #DDDDDB; border-radius:8px;
     font-size:14px; font-family:inherit; text-align:center; margin-bottom:12px; letter-spacing:.3px;
   }
   .auth-step input[type=text]{ font-size:20px; letter-spacing:6px; font-weight:700; }
@@ -60,20 +118,20 @@
   .auth-step .btn:hover{ background:var(--deep-green); }
   .auth-step .btn:disabled{ opacity:.6; cursor:not-allowed; }
   .auth-step .link-btn{
-    background:none; border:none; color:var(--mid); font-size:12px; text-decoration:underline;
+    background:none; border:none; color:#888886; font-size:12px; text-decoration:underline;
     cursor:pointer; display:block; margin:4px auto;
   }
-  .auth-step .link-btn:hover{ color:var(--charcoal); }
-  .code-sent-to{ font-size:12.5px; color:var(--charcoal); margin:0 0 16px; }
+  .auth-step .link-btn:hover{ color:#555555; }
+  .code-sent-to{ font-size:12.5px; color:#555555; margin:0 0 16px; }
   .login-error{
-    display:none; margin-top:16px; background:var(--red-bg); color:var(--red);
+    display:none; margin-top:16px; background:#FDECEA; color:#C0392B;
     border:1px solid #f3c9c4; border-radius:8px; padding:10px 12px; font-size:12.5px; text-align:left;
   }
   .login-status{
-    display:none; margin-top:10px; background:var(--mint); color:var(--deep-green);
+    display:none; margin-top:10px; background:#EAFAD2; color:var(--deep-green);
     border-radius:8px; padding:8px 12px; font-size:12.5px;
   }
-  .login-foot{ margin-top:22px; font-size:11px; color:var(--mid); }
+  .login-foot{ margin-top:22px; font-size:11px; color:#888886; }
 
   /* ---------- HUB (icon rail + dashboard layout) ---------- */
   /* Off-white page backdrop (brand guide's "Off White -- page backgrounds") so the
@@ -118,7 +176,7 @@
   .rail-item.disabled{ opacity:.4; cursor:not-allowed; pointer-events:none; }
   .rail-tooltip{
     position:absolute; left:66px; top:50%; transform:translateY(-50%);
-    background:var(--dark); color:#fff; font-size:11.5px; font-weight:600; white-space:nowrap;
+    background:var(--ink); color:#fff; font-size:11.5px; font-weight:600; white-space:nowrap;
     padding:7px 12px; border-radius:8px; opacity:0; pointer-events:none; transition:opacity .12s ease; z-index:30;
   }
   .rail-item:hover .rail-tooltip{ opacity:1; }
@@ -134,7 +192,7 @@
 
   /* Live local time + weather for Myrtle Beach, SC -- flat pill, matches stat-card styling */
   .local-info{
-    display:flex; align-items:center; gap:16px; background:#fff; border:1px solid var(--border);
+    display:flex; align-items:center; gap:16px; background:var(--card); border:1px solid var(--border);
     border-radius:12px; padding:9px 16px; flex-shrink:0;
   }
   .local-info .li-item{ display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--dark); }
@@ -153,8 +211,9 @@
   /* Stat row -- flat icon-circle + label + value, no gradients */
   .stat-row{ display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:14px; padding:26px 36px 0; }
   .stat-card{
-    background:#fff; border:1px solid var(--border); border-radius:16px; padding:16px 18px;
+    background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px 18px;
     display:flex; align-items:center; gap:12px;
+    animation:cardIn .5s cubic-bezier(.16,1,.3,1) both;
   }
   .stat-card .stat-icon{
     width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center;
@@ -171,14 +230,17 @@
   /* Tool cards -- one flat design used everywhere, no gradients, no photo overlays */
   .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:18px; }
   .tool-card{
-    background:#fff; border:1px solid var(--border); border-radius:18px; overflow:hidden;
+    background:var(--card); border:1px solid var(--border); border-radius:18px; overflow:hidden;
     text-decoration:none; color:inherit; display:flex; flex-direction:column;
     box-shadow:0 2px 8px rgba(20,30,15,.05);
-    transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    transition:transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s ease, border-color .25s ease;
+    animation:cardIn .55s cubic-bezier(.16,1,.3,1) both;
   }
-  .tool-card:hover{ transform:translateY(-3px); box-shadow:0 12px 28px rgba(20,30,15,.12); border-color:var(--light); }
+  .tool-card:hover{ transform:translateY(-6px) scale(1.015); box-shadow:0 18px 36px rgba(20,30,15,.14); border-color:var(--light); }
+  .tool-card:active{ transform:translateY(-2px) scale(.995); }
   .tool-card .card-banner{ height:132px; overflow:hidden; background:var(--bg); }
-  .tool-card .card-banner img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .tool-card .card-banner img{ width:100%; height:100%; object-fit:cover; display:block; transition:transform .5s cubic-bezier(.16,1,.3,1); }
+  .tool-card:hover .card-banner img{ transform:scale(1.06); }
   /* Coming-soon cards keep their real photo but desaturated, so "not live yet"
      still reads instantly without going back to flat placeholder colors. */
   .tool-card.disabled .card-banner img{ filter:grayscale(85%); }
@@ -211,7 +273,7 @@
 
   /* Footer */
   .hub-footer{
-    margin-top:56px; border-top:1px solid var(--border); background:#fff;
+    margin-top:56px; border-top:1px solid var(--border); background:var(--card);
   }
   .hub-footer-inner{
     max-width:1200px; margin:0 auto; padding:28px 36px 32px; display:flex; flex-wrap:wrap;
@@ -237,10 +299,10 @@
      hovering -- on touch, :hover can otherwise "stick" after a tap until
      the person taps elsewhere, which reads as a stuck/broken icon. */
   @media (hover: hover){
-    .rail-item:hover{ background:var(--dark); color:#fff; }
+    .rail-item:hover{ background:var(--ink); color:#fff; }
   }
   @media (hover: none){
-    .rail-item:active{ background:var(--dark); color:#fff; }
+    .rail-item:active{ background:var(--ink); color:#fff; }
   }
 
   /* Favorite star -- shown on tool cards, top-left of the banner. Filled
@@ -249,16 +311,20 @@
     position:absolute; top:10px; left:10px; width:26px; height:26px; border-radius:8px;
     background:rgba(255,255,255,.9); border:none; cursor:pointer; display:flex; align-items:center;
     justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.12); z-index:5;
+    transition:transform .15s ease;
   }
-  .card-fav svg{ width:14px; height:14px; color:var(--mid); }
-  .card-fav.active svg{ color:var(--green); fill:var(--green); }
+  .card-fav svg{ width:14px; height:14px; color:var(--mid); transition:color .15s ease, transform .25s cubic-bezier(.34,1.56,.64,1); }
+  .card-fav.active svg{ color:var(--green); fill:var(--green); transform:scale(1.15); }
   .tool-card{ position:relative; }
 
   /* "Continue where you left off" banner */
   .continue-banner{
-    display:none; align-items:center; gap:12px; background:#fff; border:1px solid var(--border);
+    display:none; align-items:center; gap:12px; background:var(--card); border:1px solid var(--border);
     border-radius:14px; padding:12px 18px; margin:22px 36px 0;
+    animation:fadeSlideDown .4s cubic-bezier(.16,1,.3,1) both;
   }
+  .continue-banner a{ transition:background .15s ease, transform .15s ease; }
+  .continue-banner a:active{ transform:scale(.95); }
   .continue-banner svg{ width:18px; height:18px; color:var(--deep-green); flex-shrink:0; }
   .continue-banner .cb-text{ font-size:12.5px; color:var(--charcoal); flex:1; }
   .continue-banner .cb-text strong{ color:var(--dark); }
@@ -288,9 +354,12 @@
   }
   .gh-modal-overlay.open{ display:flex; }
   .gh-modal{
-    background:#fff; border-radius:16px; width:100%; max-width:420px; margin:0 20px;
+    background:var(--card); border-radius:16px; width:100%; max-width:420px; margin:0 20px;
     box-shadow:0 20px 60px rgba(0,0,0,.25); overflow:hidden; max-height:70vh; display:flex; flex-direction:column;
+    animation:fadeSlideDown .3s cubic-bezier(.16,1,.3,1) both;
   }
+  .gh-modal-close{ transition:transform .15s ease, color .15s ease; }
+  .gh-modal-close:hover{ color:var(--red); transform:rotate(90deg); }
   .gh-modal-head{ padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
   .gh-modal-head h3{ margin:0; font-size:14.5px; color:var(--dark); }
   .gh-modal-close{ background:none; border:none; color:var(--mid); cursor:pointer; font-size:18px; line-height:1; }
@@ -300,14 +369,25 @@
 
   /* Cmd+K search */
   .search-hint{
-    display:flex; align-items:center; gap:6px; background:#fff; border:1px solid var(--border);
+    display:flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--border);
     border-radius:10px; padding:8px 12px; font-size:12px; color:var(--mid); cursor:pointer; flex-shrink:0;
+    transition:transform .15s ease, border-color .15s ease;
   }
   .search-hint kbd{
     font-family:inherit; background:var(--bg); border:1px solid var(--border); border-radius:5px;
     padding:1px 6px; font-size:10.5px; color:var(--charcoal);
   }
   .search-hint:hover{ border-color:var(--light); }
+
+  .theme-toggle{
+    width:34px; height:34px; border-radius:50%; border:1px solid var(--border); background:var(--card);
+    color:var(--mid); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    transition:transform .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .theme-toggle svg{ transition:transform .35s cubic-bezier(.16,1,.3,1); }
+  .theme-toggle:hover svg{ transform:rotate(25deg); }
+  .theme-toggle svg{ width:16px; height:16px; }
+  .theme-toggle:hover{ color:var(--deep-green); border-color:var(--light); }
   .search-input-wrap{ padding:14px 22px; border-bottom:1px solid var(--border); }
   .search-input-wrap input{
     width:100%; border:none; outline:none; font-size:16px; color:var(--dark); font-family:inherit;
@@ -331,23 +411,28 @@
      Presence itself comes from a heartbeat the Hub (and Pending Tasks) send
      every ~60s -- see presence_heartbeat/presence_onlineUsers in the .gs file. */
   .presence-widget{
-    position:relative; display:none; align-items:center; gap:8px; background:#fff;
+    position:relative; display:none; align-items:center; gap:8px; background:var(--card);
     border:1px solid var(--border); border-radius:12px; padding:7px 12px 7px 8px; flex-shrink:0; cursor:pointer;
+    transition:transform .15s ease, border-color .15s ease;
   }
+  .presence-widget:hover{ border-color:var(--light); }
+  .presence-pop{ animation:fadeScaleIn .18s cubic-bezier(.16,1,.3,1) both; transform-origin:top right; }
   .presence-stack{ display:flex; }
   .presence-dot{
-    width:24px; height:24px; border-radius:50%; background:var(--charcoal); color:#fff;
+    width:24px; height:24px; border-radius:50%; background:var(--ink); color:#fff;
     font-size:9.5px; font-weight:700; display:flex; align-items:center; justify-content:center;
-    border:2px solid #fff; margin-left:-8px; position:relative; flex-shrink:0;
+    border:2px solid var(--card); margin-left:-8px; position:relative; flex-shrink:0;
   }
   .presence-dot:first-child{ margin-left:0; }
   .presence-dot::after{
     content:''; position:absolute; bottom:-1px; right:-1px; width:8px; height:8px; border-radius:50%;
-    background:var(--green); border:2px solid #fff;
+    background:var(--green); border:2px solid var(--card);
+    animation:livePulse 2.2s ease-out infinite;
   }
+  .presence-dot{ animation:cardIn .4s cubic-bezier(.16,1,.3,1) both; }
   .presence-count{ font-size:12px; font-weight:600; color:var(--charcoal); white-space:nowrap; }
   .presence-pop{
-    display:none; position:absolute; top:calc(100% + 8px); right:0; background:#fff; border:1px solid var(--border);
+    display:none; position:absolute; top:calc(100% + 8px); right:0; background:var(--card); border:1px solid var(--border);
     border-radius:12px; box-shadow:0 12px 28px rgba(20,30,15,.12); padding:10px; min-width:190px; z-index:40;
   }
   .presence-widget.open .presence-pop{ display:block; }
@@ -357,8 +442,8 @@
 
   /* #15 -- tiny backend health pill in the footer */
   .backend-status{ display:inline-flex; align-items:center; gap:6px; }
-  .backend-status .bs-dot{ width:7px; height:7px; border-radius:50%; background:var(--mid); flex-shrink:0; }
-  .backend-status.ok .bs-dot{ background:var(--green); }
+  .backend-status .bs-dot{ width:7px; height:7px; border-radius:50%; background:var(--mid); flex-shrink:0; transition:background .3s ease; }
+  .backend-status.ok .bs-dot{ background:var(--green); animation:livePulse 2.2s ease-out infinite; }
   .backend-status.down .bs-dot{ background:var(--red); }
 
   /* #10 -- Estimates pending stat card, appended once its data loads */
@@ -372,19 +457,30 @@
   <div class="login-card">
     <img class="logo-big" src="data:image/png;base64,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" alt="GreenHill Products Inc.">
     <h1>Team Hub</h1>
-    <p>Sign in with your <strong>@greenhill-products.com</strong> email to access the internal tools. We'll email you a one-time code -- no password needed.</p>
+    <p>Sign in with your <strong>@greenhill-products.com</strong> email and password.</p>
 
-    <div class="auth-step" id="emailStep">
+    <div class="auth-step" id="passwordStep">
       <input type="email" id="loginEmail" placeholder="you@greenhill-products.com" autocomplete="email">
-      <button class="btn" id="sendCodeBtn" onclick="sendCode()">Send code</button>
+      <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+      <button class="btn" id="loginBtn" onclick="loginWithPassword()">Sign in</button>
+      <button class="link-btn" onclick="showForgotStep()">First time or forgot your password?</button>
     </div>
 
-    <div class="auth-step" id="codeStep" style="display:none;">
+    <div class="auth-step" id="forgotEmailStep" style="display:none;">
+      <p class="code-sent-to">We'll email you a one-time code to confirm it's really you, then you can set a password.</p>
+      <input type="email" id="forgotEmail" placeholder="you@greenhill-products.com" autocomplete="email">
+      <button class="btn" id="sendCodeBtn" onclick="sendCode()">Send code</button>
+      <button class="link-btn" onclick="showPasswordStep()">Back to sign in</button>
+    </div>
+
+    <div class="auth-step" id="setPasswordStep" style="display:none;">
       <p class="code-sent-to">Code sent to <strong id="codeSentTo"></strong></p>
       <input type="text" id="loginCode" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
-      <button class="btn" id="verifyCodeBtn" onclick="verifyCode()">Verify &amp; sign in</button>
+      <input type="password" id="newPassword" placeholder="New password (min. 8 characters)" autocomplete="new-password">
+      <input type="password" id="newPasswordConfirm" placeholder="Confirm new password" autocomplete="new-password">
+      <button class="btn" id="setPasswordBtn" onclick="submitSetPassword()">Set password &amp; sign in</button>
       <button class="link-btn" onclick="resendCode()">Resend code</button>
-      <button class="link-btn" onclick="useAnotherEmail()">Use a different email</button>
+      <button class="link-btn" onclick="showPasswordStep()">Back to sign in</button>
     </div>
 
     <div class="login-status" id="loginStatus"></div>
@@ -444,6 +540,10 @@
         <button class="search-hint" onclick="openSearch()" aria-label="Search tools">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           Search <kbd>⌘K</kbd>
+        </button>
+
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+          <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
         </button>
 
         <div class="user-chip">
@@ -717,9 +817,11 @@
   function renderRail(visibleTools){
     const wrap = document.getElementById('railIcons');
     wrap.innerHTML = '';
-    orderWithFavoritesFirst(visibleTools).forEach(t => {
+    orderWithFavoritesFirst(visibleTools).forEach((t, i) => {
       const el = document.createElement(t.url ? 'a' : 'div');
       el.className = 'rail-item' + (t.url ? '' : ' disabled');
+      el.style.animation = 'railIn .4s cubic-bezier(.16,1,.3,1) both';
+      el.style.animationDelay = (i * 40) + 'ms';
       const label = t.title + (t.url ? '' : ' (coming soon)') + (isFavorite(t.key) ? ' (favorite)' : '');
       el.setAttribute('aria-label', label);
       if (t.url){
@@ -756,7 +858,7 @@
       {
         // "Layers" -- reads as a stack of connected systems/tools rather than
         // a plain 4-square grid.
-        label: 'Available tools', value: String(visibleTools.length), color: 'var(--dark)',
+        label: 'Available tools', value: String(visibleTools.length), color: 'var(--ink)',
         icon: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>'
       },
       {
@@ -772,23 +874,46 @@
         onclick: "scrollToTag('Future')"
       },
       {
-        label: 'Your role', value: roleLabel(role), color: 'var(--dark)',
+        label: 'Your role', value: roleLabel(role), color: 'var(--ink)',
         icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
         onclick: "openRoleModal()"
       }
     ];
 
-    row.innerHTML = stats.map(s => `
-      <div class="stat-card${s.onclick ? ' clickable' : ''}" ${s.onclick ? `onclick="${s.onclick}" role="button" tabindex="0" aria-label="${s.label}: ${s.value}"` : ''}>
+    row.innerHTML = stats.map((s, i) => {
+      const isNumber = /^\d+$/.test(s.value);
+      return `
+      <div class="stat-card${s.onclick ? ' clickable' : ''}" style="animation-delay:${i * 60}ms" ${s.onclick ? `onclick="${s.onclick}" role="button" tabindex="0" aria-label="${s.label}: ${s.value}"` : ''}>
         <div class="stat-icon" style="background:${s.color}">
           <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${s.icon}</svg>
         </div>
         <div>
           <div class="stat-label">${s.label}</div>
-          <div class="stat-value">${s.value}</div>
+          <div class="stat-value"${isNumber ? ` data-count-to="${s.value}"` : ''}>${isNumber ? '0' : s.value}</div>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
+
+    // Quick count-up from 0 -> value on every numeric stat, staggered to
+    // match the card entrance above rather than all ticking at once.
+    row.querySelectorAll('[data-count-to]').forEach((el, i) => {
+      const target = parseInt(el.getAttribute('data-count-to'), 10) || 0;
+      setTimeout(() => animateCount(el, target), i * 60 + 150);
+    });
+  }
+
+  function animateCount(el, target, duration){
+    duration = duration || 600;
+    if (target <= 0){ el.textContent = '0'; return; }
+    const start = performance.now();
+    function tick(now){
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+      el.textContent = String(Math.round(eased * target));
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
   }
 
   // #6 -- clicking "Live now"/"Future" scrolls to (and briefly highlights)
@@ -827,10 +952,13 @@
     }
 
     const categories = [...new Set(visibleTools.map(t => t.category))];
+    let cardIndex = 0;
 
     wrap.innerHTML = categories.map(cat => {
-      const cards = visibleTools.filter(t => t.category === cat).map(t => `
-        <a class="tool-card${t.url ? '' : ' disabled'}" data-tag="${t.tag}" aria-label="${t.title}${t.url ? '' : ' (' + t.tag + ')'}"
+      const cards = visibleTools.filter(t => t.category === cat).map(t => {
+      const cardDelay = cardIndex++ * 45;
+      return `
+        <a class="tool-card${t.url ? '' : ' disabled'}" data-tag="${t.tag}" aria-label="${t.title}${t.url ? '' : ' (' + t.tag + ')'}" style="animation-delay:${cardDelay}ms"
            ${t.url ? `href="${toolCardUrl(t)}" target="_blank" rel="noopener" onclick="recordToolOpenByKey('${t.key}')"` : ''}>
           <button class="card-fav${isFavorite(t.key) ? ' active' : ''}" title="${isFavorite(t.key) ? 'Remove from favorites' : 'Mark as favorite'}"
                   aria-label="${isFavorite(t.key) ? 'Remove from favorites' : 'Mark as favorite'}"
@@ -848,7 +976,8 @@
             </div>
           </div>
         </a>
-      `).join('');
+      `;
+      }).join('');
 
       return `
         <div class="section">
@@ -968,7 +1097,27 @@
       .join(' ');
   }
 
-  async function sendCode(){
+  // Builds the session object + stores it + shows the Hub -- shared by
+  // password login and the "set a new password" flow, since both return
+  // the exact same shape from the backend (email, name, role, sessionToken).
+  function establishSession(data){
+    const role = ROLE_ACCESS_ENABLED ? data.role : DEFAULT_ROLE;
+    const session = {
+      email: data.email,
+      name: data.name || nameFromEmail(data.email),
+      role: role,
+      // Used both for true SSO into other tools (see toolCardUrl() and
+      // tasks_requireSession in apps-script-additions-ALL.gs) and, now,
+      // as the real per-user credential for Estimates Manager's own
+      // session-gated calls -- see em_listEstimates/em_updateEstimate.
+      sessionToken: data.sessionToken || null,
+      exp: Date.now() + SESSION_LENGTH_MS
+    };
+    sessionStorage.setItem('gh_hub_session', JSON.stringify(session));
+    showHub(session);
+  }
+
+  async function loginWithPassword(){
     clearError(); clearStatus();
 
     if (APPS_SCRIPT_URL.indexOf('PASTE_YOUR_NEW') === 0){
@@ -977,6 +1126,61 @@
     }
 
     const email = (document.getElementById('loginEmail').value || '').toLowerCase().trim();
+    const password = document.getElementById('loginPassword').value || '';
+
+    if (!isAllowedDomain(email)){
+      showError('Please use your GreenHill company email address.');
+      return;
+    }
+    if (!password){
+      showError('Enter your password.');
+      return;
+    }
+
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true; btn.textContent = 'Signing in…';
+    try{
+      const res = await fetchWithRetry(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'loginWithPassword', key: APPS_SCRIPT_KEY, email: email, password: password })
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Could not sign in.');
+      establishSession(data);
+    }catch(err){
+      showError(err.message || 'Could not sign in.');
+    }finally{
+      btn.disabled = false; btn.textContent = 'Sign in';
+    }
+  }
+
+  function showPasswordStep(){
+    clearError(); clearStatus();
+    pendingEmail = null;
+    document.getElementById('forgotEmailStep').style.display = 'none';
+    document.getElementById('setPasswordStep').style.display = 'none';
+    document.getElementById('passwordStep').style.display = 'block';
+  }
+
+  function showForgotStep(){
+    clearError(); clearStatus();
+    document.getElementById('passwordStep').style.display = 'none';
+    document.getElementById('setPasswordStep').style.display = 'none';
+    document.getElementById('forgotEmailStep').style.display = 'block';
+    const loginEmail = (document.getElementById('loginEmail').value || '').trim();
+    if (loginEmail) document.getElementById('forgotEmail').value = loginEmail;
+  }
+
+  async function sendCode(){
+    clearError(); clearStatus();
+
+    if (APPS_SCRIPT_URL.indexOf('PASTE_YOUR_NEW') === 0){
+      showError('APPS_SCRIPT_URL is not configured yet -- deploy apps-script-additions-ALL.gs and paste the URL in the code.');
+      return;
+    }
+
+    const email = (document.getElementById('forgotEmail').value || '').toLowerCase().trim();
 
     if (!isAllowedDomain(email)){
       showError('Please use your GreenHill company email address.');
@@ -998,9 +1202,11 @@
 
       pendingEmail = email;
       document.getElementById('codeSentTo').textContent = email;
-      document.getElementById('emailStep').style.display = 'none';
-      document.getElementById('codeStep').style.display = 'block';
+      document.getElementById('forgotEmailStep').style.display = 'none';
+      document.getElementById('setPasswordStep').style.display = 'block';
       document.getElementById('loginCode').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('newPasswordConfirm').value = '';
       document.getElementById('loginCode').focus();
       showStatus('Code sent — check your inbox.');
     }catch(err){
@@ -1012,55 +1218,44 @@
 
   async function resendCode(){
     if (!pendingEmail) return;
-    document.getElementById('loginEmail').value = pendingEmail;
+    document.getElementById('forgotEmail').value = pendingEmail;
     await sendCode();
   }
 
-  function useAnotherEmail(){
-    clearError(); clearStatus();
-    pendingEmail = null;
-    document.getElementById('codeStep').style.display = 'none';
-    document.getElementById('emailStep').style.display = 'block';
-  }
-
-  async function verifyCode(){
+  async function submitSetPassword(){
     clearError(); clearStatus();
     const code = (document.getElementById('loginCode').value || '').trim();
+    const newPassword = document.getElementById('newPassword').value || '';
+    const confirmPassword = document.getElementById('newPasswordConfirm').value || '';
+
     if (!pendingEmail || code.length !== 6){
       showError('Enter the 6-digit code we emailed you.');
       return;
     }
+    if (newPassword.length < 8){
+      showError('Password must be at least 8 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword){
+      showError('Passwords do not match.');
+      return;
+    }
 
-    const btn = document.getElementById('verifyCodeBtn');
-    btn.disabled = true; btn.textContent = 'Verifying…';
+    const btn = document.getElementById('setPasswordBtn');
+    btn.disabled = true; btn.textContent = 'Saving…';
     try{
       const res = await fetchWithRetry(APPS_SCRIPT_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight
-        body: JSON.stringify({ action: 'verifyLoginCode', key: APPS_SCRIPT_KEY, email: pendingEmail, code: code })
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'setPassword', key: APPS_SCRIPT_KEY, email: pendingEmail, code: code, newPassword: newPassword })
       });
       const data = await res.json();
-      if (!data.ok) throw new Error(data.error || 'Invalid or expired code.');
-
-      const role = ROLE_ACCESS_ENABLED ? data.role : DEFAULT_ROLE;
-      const session = {
-        email: data.email,
-        name: data.name || nameFromEmail(data.email),
-        role: role,
-        // Captured so tools with true SSO (currently just Pending Tasks) can
-        // skip their own one-time-code screen -- see toolCardUrl() and
-        // tasks_requireSession in apps-script-additions-ALL.gs. Previously
-        // returned by the backend but discarded here, which is why Pending
-        // Tasks kept asking for a second code after a Hub login.
-        sessionToken: data.sessionToken || null,
-        exp: Date.now() + SESSION_LENGTH_MS
-      };
-      sessionStorage.setItem('gh_hub_session', JSON.stringify(session));
-      showHub(session);
+      if (!data.ok) throw new Error(data.error || 'Could not set your password.');
+      establishSession(data);
     }catch(err){
-      showError(err.message || 'Could not verify the code.');
+      showError(err.message || 'Could not set your password.');
     }finally{
-      btn.disabled = false; btn.textContent = 'Verify & sign in';
+      btn.disabled = false; btn.textContent = 'Set password & sign in';
     }
   }
 
@@ -1090,11 +1285,11 @@
   // instead of just trusting the prefilled email -- currently only Pending Tasks.
   let currentSessionToken = null;
   // Tool keys whose login screen accepts an ?email= prefill param.
-  const EMAIL_PREFILL_TOOLS = ['pendingTasks'];
+  const EMAIL_PREFILL_TOOLS = ['pendingTasks', 'estimatesManager'];
   // Tool keys that additionally accept a real ?sessionToken= and skip their
   // own code screen entirely when it resolves -- must be a subset of
   // EMAIL_PREFILL_TOOLS above.
-  const SSO_TOOLS = ['pendingTasks'];
+  const SSO_TOOLS = ['pendingTasks', 'estimatesManager'];
   function toolCardUrl(t){
     if (!t.url) return null;
     let url = t.url;
@@ -1113,7 +1308,8 @@
     stopPresence();
     document.getElementById('hubScreen').style.display = 'none';
     document.getElementById('loginScreen').style.display = 'flex';
-    useAnotherEmail();
+    showPasswordStep();
+    document.getElementById('loginPassword').value = '';
   }
 
   /* ================= #11+#13 -- Estimates pending KPI ================= */
@@ -1135,7 +1331,13 @@
       card.setAttribute('tabindex', '0');
       card.setAttribute('aria-label', 'Estimates pending: ' + data.pending);
       card.onclick = () => {
-        window.open(TOOL_URLS.estimatesManager + '?status=pending', '_blank', 'noopener');
+        // Route through toolCardUrl() rather than TOOL_URLS directly so this
+        // deep link still carries ?email=/&sessionToken= for SSO -- otherwise
+        // this one shortcut would be the one link in the whole Hub that
+        // dropped a signed-in person back onto Estimates Manager's login.
+        const base = toolCardUrl({ key: 'estimatesManager', url: TOOL_URLS.estimatesManager });
+        const sep = base.indexOf('?') === -1 ? '?' : '&';
+        window.open(base + sep + 'status=' + encodeURIComponent('Estimate Sent'), '_blank', 'noopener');
       };
       card.innerHTML = `
         <div class="stat-icon" style="background:var(--amber)">
@@ -1143,10 +1345,12 @@
         </div>
         <div>
           <div class="stat-label">Estimates pending</div>
-          <div class="stat-value">${data.pending}</div>
+          <div class="stat-value">0</div>
         </div>
       `;
       row.appendChild(card);
+      const valueEl = card.querySelector('.stat-value');
+      setTimeout(() => animateCount(valueEl, parseInt(data.pending, 10) || 0), 100);
     }catch(err){ /* silent -- the rest of the Hub still works without this card */ }
   }
 
@@ -1395,10 +1599,27 @@
     `).join('');
   }
 
+  /* ================= DARK MODE (same toggle pattern as Pending Tasks) ================= */
+  const THEME_KEY = 'gh_hub_theme';
+  function applyTheme(theme){
+    document.body.setAttribute('data-theme', theme);
+    const icon = document.getElementById('themeIcon');
+    if (!icon) return;
+    icon.innerHTML = theme === 'dark'
+      ? '<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/>'
+      : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>';
+  }
+  function toggleTheme(){
+    const next = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  }
+
   window.onload = function(){
     document.getElementById('hubScreen').style.display = 'none';
     document.getElementById('footerYear').textContent = new Date().getFullYear();
 
+    applyTheme(localStorage.getItem(THEME_KEY) || 'light');
     initDockMagnify();
     updateLocalClock();
     setInterval(updateLocalClock, 1000);
@@ -1414,8 +1635,12 @@
       }catch(e){}
     }
 
-    document.getElementById('loginEmail').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendCode(); });
-    document.getElementById('loginCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') verifyCode(); });
+    document.getElementById('loginEmail').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('loginPassword').focus(); });
+    document.getElementById('loginPassword').addEventListener('keydown', (e) => { if (e.key === 'Enter') loginWithPassword(); });
+    document.getElementById('forgotEmail').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendCode(); });
+    document.getElementById('loginCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('newPassword').focus(); });
+    document.getElementById('newPassword').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('newPasswordConfirm').focus(); });
+    document.getElementById('newPasswordConfirm').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitSetPassword(); });
 
     // Cmd+K / Ctrl+K opens the tool search from anywhere in the Hub; Escape
     // closes whichever modal (search or role) is currently open.
