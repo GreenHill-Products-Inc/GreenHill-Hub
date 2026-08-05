@@ -174,6 +174,14 @@
   .rail-item svg{ width:18px; height:18px; }
   .rail-item.disabled{ opacity:.4; cursor:not-allowed; pointer-events:none; }
   .rail-item.active{ background:var(--ink); color:#fff; }
+  .rail-item:focus-visible, .rail-flyout-item:focus-visible, .rail-flyout-head:focus-visible{
+    outline:2px solid var(--deep-green); outline-offset:2px;
+  }
+  /* #4 -- small dot on a department icon when it has an unseen changelog entry */
+  .rail-news-dot{
+    position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%;
+    background:var(--amber); border:1.5px solid var(--card); pointer-events:none;
+  }
   .rail-tooltip{
     position:absolute; left:52px; top:50%; transform:translateY(-50%);
     background:var(--ink); color:#fff; font-size:11.5px; font-weight:600; white-space:nowrap;
@@ -202,8 +210,22 @@
     transition:background .12s ease;
   }
   .rail-flyout-item svg{ width:16px; height:16px; flex-shrink:0; color:var(--mid); }
-  .rail-flyout-item:hover{ background:var(--bg); }
+  .rail-flyout-item:hover, .rail-flyout-item:focus-visible{ background:var(--bg); }
   .rail-flyout-item.disabled{ opacity:.45; cursor:not-allowed; pointer-events:none; }
+
+  /* #6 -- hover preview: a small card with the tool's thumbnail + description,
+     shown next to the flyout item currently under the mouse (or keyboard focus). */
+  .rail-preview{
+    position:fixed; z-index:32; width:240px;
+    background:var(--card); border:1px solid var(--border); border-radius:12px;
+    box-shadow:0 12px 28px rgba(20,30,15,.14); overflow:hidden;
+    display:none; pointer-events:none;
+  }
+  .rail-preview.open{ display:block; }
+  .rail-preview img{ width:100%; height:100px; object-fit:cover; display:block; }
+  .rail-preview-body{ padding:10px 12px; }
+  .rail-preview-title{ font-size:12.5px; font-weight:700; color:var(--dark); margin:0 0 3px; }
+  .rail-preview-desc{ font-size:11.5px; color:var(--mid); line-height:1.4; margin:0; }
 
   /* Rail width (60px) + company header height (60px) drive the content offset. */
   .content-col{ flex:1; min-width:0; display:flex; flex-direction:column; margin-left:60px; margin-top:60px; }
@@ -316,6 +338,28 @@
   .hub-footer-dot{ color:var(--border); }
   .hub-footer-copy{ font-size:11.5px; color:var(--mid); width:100%; text-align:center; border-top:1px solid var(--border); padding-top:16px; margin-top:4px; }
   @media (max-width:720px){ .hub-footer-inner{ justify-content:center; text-align:center; } }
+
+  /* #8 -- guided tour: a small floating card that walks a new employee
+     through the rail, the search, and the footer. No dimmed overlay --
+     keeps the real Hub fully visible and usable underneath. */
+  .tour-card{
+    position:fixed; z-index:80; width:280px; background:var(--card); border:1px solid var(--border);
+    border-radius:14px; box-shadow:0 16px 36px rgba(20,30,15,.22); padding:16px 18px; display:none;
+    animation:fadeScaleIn .18s cubic-bezier(.16,1,.3,1) both;
+  }
+  .tour-card.open{ display:block; }
+  .tour-step-label{ font-size:10.5px; font-weight:700; color:var(--deep-green); text-transform:uppercase; letter-spacing:.4px; margin:0 0 6px; }
+  .tour-title{ font-size:14px; font-weight:700; color:var(--dark); margin:0 0 6px; }
+  .tour-desc{ font-size:12.5px; color:var(--mid); line-height:1.5; margin:0 0 14px; }
+  .tour-actions{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .tour-skip{ background:none; border:none; color:var(--mid); font-size:12px; cursor:pointer; padding:4px; }
+  .tour-skip:hover{ color:var(--dark); }
+  .tour-next{
+    background:var(--ink); color:#fff; border:none; border-radius:8px; padding:8px 16px;
+    font-size:12.5px; font-weight:700; cursor:pointer;
+  }
+  .tour-next:hover{ background:var(--deep-green); }
+  .tour-highlight{ position:relative; z-index:81; box-shadow:0 0 0 3px var(--deep-green), 0 0 0 6000px rgba(20,30,15,.35); border-radius:12px; }
   .no-access{ text-align:center; padding:60px 20px; color:var(--mid); font-size:13.5px; }
 
   @media (max-width:720px){
@@ -432,6 +476,11 @@
   .search-result .sr-title{ font-size:13px; font-weight:600; color:var(--dark); }
   .search-result .sr-cat{ font-size:11px; color:var(--mid); }
   .search-empty{ padding:20px 8px; text-align:center; color:var(--mid); font-size:12.5px; }
+  .search-section-label{
+    font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--mid);
+    padding:12px 8px 4px;
+  }
+  .search-section-label:first-child{ padding-top:4px; }
 
   /* #5 -- who's online. A small stack of initials-avatars with a live green
      dot, plus a text count; hovering (or tapping) opens a short name list.
@@ -620,6 +669,10 @@
         <span class="hub-footer-dot">·</span>
         <a href="https://mail.herodata.com/interface/root#/login" target="_blank" rel="noopener">Webmail</a>
         <span class="hub-footer-dot">·</span>
+        <a href="#" id="reportIssueLink" onclick="reportIssue(); return false;">Report an issue</a>
+        <span class="hub-footer-dot">·</span>
+        <a href="#" onclick="openChangelog(); return false;">What's new</a>
+        <span class="hub-footer-dot">·</span>
         <span>Internal use only — GreenHill Products Inc. employees and authorized contractors</span>
         <span class="hub-footer-dot">·</span>
         <span class="backend-status" id="backendStatus"><span class="bs-dot"></span><span id="backendStatusText">Checking backend…</span></span>
@@ -647,6 +700,37 @@
         <input type="text" id="searchInput" placeholder="Search tools by name or category..." autocomplete="off">
       </div>
       <div class="gh-modal-body" id="searchResults"></div>
+    </div>
+  </div>
+
+  <!-- #7 -- "What's new" changelog modal -->
+  <div class="gh-modal-overlay" id="changelogModalOverlay" onclick="if(event.target===this) closeChangelog()">
+    <div class="gh-modal">
+      <div class="gh-modal-head">
+        <h3>What's new</h3>
+        <button class="gh-modal-close" onclick="closeChangelog()" aria-label="Close">×</button>
+      </div>
+      <div class="gh-modal-body" id="changelogBody"></div>
+    </div>
+  </div>
+
+  <!-- #6 -- rail flyout hover/focus preview -->
+  <div class="rail-preview" id="railPreview">
+    <img id="railPreviewImg" src="" alt="">
+    <div class="rail-preview-body">
+      <p class="rail-preview-title" id="railPreviewTitle"></p>
+      <p class="rail-preview-desc" id="railPreviewDesc"></p>
+    </div>
+  </div>
+
+  <!-- #8 -- guided tour card for first-time visitors -->
+  <div class="tour-card" id="tourCard">
+    <p class="tour-step-label" id="tourStepLabel"></p>
+    <p class="tour-title" id="tourTitle"></p>
+    <p class="tour-desc" id="tourDesc"></p>
+    <div class="tour-actions">
+      <button class="tour-skip" onclick="skipTour()">Skip tour</button>
+      <button class="tour-next" id="tourNextBtn" onclick="nextTourStep()">Next</button>
     </div>
   </div>
 </div>
@@ -901,6 +985,9 @@
     wrap.innerHTML = '';
     closeRailFlyout();
     let i = 0;
+    let lastDeptBtn = null;
+    let lastDeptCat = null;
+    try{ lastDeptCat = localStorage.getItem(LAST_DEPT_KEY); }catch(e){}
 
     const pending = visibleTools.find(t => t.key === 'pendingTasks');
     if (pending){
@@ -929,17 +1016,44 @@
       btn.style.animationDelay = (i++ * 40) + 'ms';
       btn.setAttribute('aria-label', d.cat);
       btn.setAttribute('aria-expanded', 'false');
+      btn.dataset.dept = d.cat;
       btn.innerHTML = `
         <span class="rail-tooltip">${d.cat}</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d.icon}</svg>
+        ${deptHasUnseenNews(d.cat) ? '<span class="rail-news-dot" aria-hidden="true"></span>' : ''}
       `;
       btn.addEventListener('click', (e) => { e.stopPropagation(); toggleRailFlyout(d.cat, btn, visibleTools); });
       wrap.appendChild(btn);
+      if (d.cat === lastDeptCat) lastDeptBtn = btn;
     });
+
+    // #5/#9 -- arrow-key navigation across the rail's buttons/links, so the
+    // whole rail is usable without a mouse (Tab already moves between items
+    // natively; this adds Up/Down as a faster same-list shortcut).
+    const focusable = () => Array.from(wrap.querySelectorAll('.rail-item:not(.disabled)'));
+    wrap.onkeydown = (e) => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      const items = focusable();
+      const idx = items.indexOf(document.activeElement);
+      if (idx === -1) return;
+      e.preventDefault();
+      const next = e.key === 'ArrowDown' ? items[(idx + 1) % items.length] : items[(idx - 1 + items.length) % items.length];
+      next.focus();
+    };
+
+    // #1 -- reopen the department the person was last working in, so the
+    // Hub doesn't always start from a blank slate. Skipped while the guided
+    // tour is running, so the two don't fight for the same screen space.
+    let willTour = false;
+    try{ willTour = !localStorage.getItem(TOUR_DONE_KEY); }catch(e){}
+    if (lastDeptBtn && !tourActive && !willTour){
+      setTimeout(() => { if (document.body.contains(lastDeptBtn)) openRailFlyout(lastDeptCat, lastDeptBtn, visibleTools); }, 500);
+    }
   }
 
   /* ================= RAIL FLYOUT (department accordion) ================= */
   let openRailDept = null;
+  let railFlyoutTriggerBtn = null;
 
   function toggleRailFlyout(cat, btn, visibleTools){
     if (openRailDept === cat){ closeRailFlyout(); return; }
@@ -950,9 +1064,11 @@
     const flyout = document.getElementById('railFlyout');
     const tools = visibleTools.filter(t => t.category === cat);
     flyout.innerHTML = `
-      <div class="rail-flyout-head" onclick="scrollToCategory('${cat}'); closeRailFlyout();">${cat}</div>
+      <div class="rail-flyout-head" tabindex="0" role="button" onclick="scrollToCategory('${cat}'); closeRailFlyout();"
+           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault(); scrollToCategory('${cat}'); closeRailFlyout();}">${cat}</div>
       ${tools.map(t => `
         <a class="rail-flyout-item${t.url ? '' : ' disabled'}" aria-label="${t.title}${t.url ? '' : ' (coming soon)'}"
+           data-key="${t.key}" ${t.url ? 'tabindex="0"' : 'tabindex="-1"'}
            ${t.url ? `href="${toolCardUrl(t)}" target="_blank" rel="noopener" onclick="recordToolOpenByKey('${t.key}')"` : ''}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg>
           ${t.title}${t.url ? '' : ' (coming soon)'}
@@ -966,6 +1082,35 @@
     btn.classList.add('active');
     btn.setAttribute('aria-expanded', 'true');
     openRailDept = cat;
+    railFlyoutTriggerBtn = btn;
+
+    // #1 -- remember this as the last-opened department.
+    recordLastDept(cat);
+    // #4 -- opening the department counts as having seen its news; drop the dot.
+    markDeptSeen(cat);
+    const dot = btn.querySelector('.rail-news-dot');
+    if (dot) dot.remove();
+
+    // #6 -- hover/focus preview + #9 -- arrow-key nav within the flyout list.
+    const items = Array.from(flyout.querySelectorAll('.rail-flyout-item'));
+    items.forEach(item => {
+      const t = tools.find(x => x.key === item.dataset.key);
+      if (!t) return;
+      item.addEventListener('mouseenter', () => showRailPreview(t, item));
+      item.addEventListener('focus', () => showRailPreview(t, item));
+      item.addEventListener('mouseleave', hideRailPreview);
+      item.addEventListener('blur', hideRailPreview);
+    });
+    flyout.onkeydown = (e) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+        const focusItems = items.filter(el => el.tabIndex !== -1);
+        const idx = focusItems.indexOf(document.activeElement);
+        if (idx === -1) return;
+        e.preventDefault();
+        const next = e.key === 'ArrowDown' ? focusItems[(idx + 1) % focusItems.length] : focusItems[(idx - 1 + focusItems.length) % focusItems.length];
+        next.focus();
+      }
+    };
   }
 
   function closeRailFlyout(){
@@ -977,6 +1122,8 @@
       el.setAttribute('aria-expanded', 'false');
     });
     openRailDept = null;
+    railFlyoutTriggerBtn = null;
+    hideRailPreview();
   }
 
   function initRailFlyoutDismiss(){
@@ -985,7 +1132,32 @@
       if (!flyout || !flyout.classList.contains('open')) return;
       if (!flyout.contains(e.target) && !e.target.closest('.rail-item')) closeRailFlyout();
     });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeRailFlyout(); });
+    // #9 -- Escape closes the flyout and returns keyboard focus to the rail
+    // button that opened it, so a keyboard-only user never loses their place.
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const trigger = railFlyoutTriggerBtn;
+      closeRailFlyout();
+      if (trigger) trigger.focus();
+    });
+  }
+
+  /* ================= #6 -- RAIL FLYOUT HOVER/FOCUS PREVIEW ================= */
+  function showRailPreview(t, anchorEl){
+    const panel = document.getElementById('railPreview');
+    if (!panel || !t.img) return;
+    document.getElementById('railPreviewImg').src = t.img;
+    document.getElementById('railPreviewImg').alt = t.title;
+    document.getElementById('railPreviewTitle').textContent = t.title;
+    document.getElementById('railPreviewDesc').textContent = t.desc || '';
+    const rect = anchorEl.getBoundingClientRect();
+    panel.style.left = (rect.right + 10) + 'px';
+    panel.style.top = Math.max(8, Math.min(rect.top, window.innerHeight - 200)) + 'px';
+    panel.classList.add('open');
+  }
+  function hideRailPreview(){
+    const panel = document.getElementById('railPreview');
+    if (panel) panel.classList.remove('open');
   }
 
   // Turns a camelCase role key ("productionAssistant") into a readable, properly
@@ -1098,6 +1270,118 @@
     { cat: 'Training', icon: '<path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/>' }
   ];
 
+  /* ================= CHANGELOG (rail news dot + "What's new" footer modal) =================
+     Add a new entry here every time the Hub ships a real change. `cat` ties
+     an entry to a department so its rail icon gets a dot until that
+     department's flyout is opened; leave `cat` out for Hub-wide entries. */
+  const CHANGELOG = [
+    { date: '2026-08-05', cat: null,          title: 'New navigation', text: 'Company header + a narrower department rail replaced the old top tabs.' },
+    { date: '2026-08-03', cat: 'Office',      title: 'New Office tools', text: 'HR/Onboarding, Vendor Management and Company Directory are now listed (Future).' },
+    { date: '2026-08-03', cat: 'Accounting',  title: 'Expense/Reimbursements', text: 'Added to the Accounting department (Future).' },
+    { date: '2026-08-01', cat: 'Training',    title: 'GreenHill Academy', text: 'A dedicated Training department was added to the Hub.' }
+  ];
+  const DEPT_SEEN_KEY = 'gh_hub_dept_seen'; // { [cat]: isoTimestampLastOpened }
+
+  function getDeptSeenMap(){
+    try{ return JSON.parse(localStorage.getItem(DEPT_SEEN_KEY) || '{}'); }
+    catch(e){ return {}; }
+  }
+  function markDeptSeen(cat){
+    const map = getDeptSeenMap();
+    map[cat] = new Date().toISOString();
+    try{ localStorage.setItem(DEPT_SEEN_KEY, JSON.stringify(map)); }catch(e){}
+  }
+  function deptHasUnseenNews(cat){
+    const seen = getDeptSeenMap()[cat];
+    return CHANGELOG.some(entry => entry.cat === cat && (!seen || entry.date > seen.slice(0, 10)));
+  }
+
+  // #7 -- "What's new" modal, reachable from the footer.
+  function openChangelog(){
+    const body = document.getElementById('changelogBody');
+    body.innerHTML = CHANGELOG.map(entry => `
+      <div class="gh-role-tool" style="align-items:flex-start;">
+        <div>
+          <div class="sr-title">${entry.title}</div>
+          <div class="sr-cat">${entry.date}${entry.cat ? ' · ' + entry.cat : ''}</div>
+          <p style="margin:5px 0 0; font-size:12.5px; color:var(--mid); line-height:1.5;">${entry.text}</p>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('changelogModalOverlay').classList.add('open');
+  }
+  function closeChangelog(){
+    document.getElementById('changelogModalOverlay').classList.remove('open');
+  }
+
+  // #10 -- "Report an issue" in the footer opens Pending Tasks with a
+  // pre-filled task title, so filing a bug is one click instead of a
+  // separate conversation.
+  function reportIssue(){
+    const pending = currentVisibleTools.find(t => t.key === 'pendingTasks');
+    if (!pending || !pending.url){
+      alert('Pending Tasks isn\'t available for your role -- email production.assistant2@greenhill-products.com to report the issue instead.');
+      return;
+    }
+    recordToolOpen(pending);
+    const base = toolCardUrl(pending);
+    const sep = base.indexOf('?') === -1 ? '?' : '&';
+    window.open(base + sep + 'newTask=1&title=' + encodeURIComponent('Hub issue: '), '_blank', 'noopener');
+  }
+
+  /* ================= #8 -- GUIDED TOUR FOR NEW EMPLOYEES ================= */
+  const TOUR_DONE_KEY = 'gh_hub_tour_done';
+  let tourActive = false;
+  let tourStepIndex = 0;
+  const TOUR_STEPS = [
+    { selector: '.company-header-brand', title: 'Welcome to the Hub', desc: 'This is the GreenHill Products internal tool hub -- everything your role can access lives here.' },
+    { selector: '#sideRail', title: 'The rail', desc: 'Your tools are grouped by department. Click a department icon to see what\'s inside it.' },
+    { selector: '.search-hint', title: 'Quick search', desc: 'Press Cmd+K (or Ctrl+K) any time to jump straight to a tool by name.' },
+    { selector: '#statRow', title: 'Your stats', desc: 'A quick read on what\'s live, what\'s coming, and your role -- click any card for details.' },
+    { selector: '.hub-footer-links', title: 'Support and updates', desc: 'Report an issue or check "What\'s new" any time from down here.' }
+  ];
+
+  function maybeStartTour(){
+    let done = false;
+    try{ done = !!localStorage.getItem(TOUR_DONE_KEY); }catch(e){}
+    if (done) return;
+    tourStepIndex = 0;
+    tourActive = true;
+    closeRailFlyout(); // don't fight the tour for screen space
+    showTourStep();
+  }
+  function showTourStep(){
+    document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+    const step = TOUR_STEPS[tourStepIndex];
+    const target = step && document.querySelector(step.selector);
+    const card = document.getElementById('tourCard');
+    if (!step || !target){ endTour(); return; }
+    target.classList.add('tour-highlight');
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById('tourStepLabel').textContent = 'Step ' + (tourStepIndex + 1) + ' of ' + TOUR_STEPS.length;
+    document.getElementById('tourTitle').textContent = step.title;
+    document.getElementById('tourDesc').textContent = step.desc;
+    document.getElementById('tourNextBtn').textContent = tourStepIndex === TOUR_STEPS.length - 1 ? 'Done' : 'Next';
+    setTimeout(() => {
+      const rect = target.getBoundingClientRect();
+      card.style.top = Math.max(12, Math.min(rect.bottom + 14, window.innerHeight - card.offsetHeight - 12)) + 'px';
+      card.style.left = Math.max(12, Math.min(rect.left, window.innerWidth - card.offsetWidth - 12)) + 'px';
+      card.classList.add('open');
+    }, 260);
+  }
+  function nextTourStep(){
+    tourStepIndex++;
+    if (tourStepIndex >= TOUR_STEPS.length){ endTour(); return; }
+    showTourStep();
+  }
+  function skipTour(){ endTour(); }
+  function endTour(){
+    tourActive = false;
+    document.getElementById('tourCard').classList.remove('open');
+    document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+    try{ localStorage.setItem(TOUR_DONE_KEY, '1'); }catch(e){}
+  }
+
   // #8 -- "Your role" opens a read-only list of what that role can see,
   // so people can self-serve instead of asking the admin.
   function openRoleModal(){
@@ -1171,6 +1455,7 @@
     renderStats(visibleTools, role);
     renderSections(visibleTools);
     renderContinueBanner(visibleTools);
+    setTimeout(maybeStartTour, 700); // after the rail/stat/card entrance animations settle
   }
 
   /* ================= FAVORITES (up to 2, pinned first in the rail) ================= */
@@ -1199,10 +1484,35 @@
   const LAST_TOOL_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
   const CONTINUE_DISMISSED_KEY = 'gh_hub_continue_dismissed'; // per-tab, via sessionStorage
 
+  // #1 -- the department the person was last working in, so renderRail() can
+  // reopen it automatically instead of the Hub always starting from a blank rail.
+  const LAST_DEPT_KEY = 'gh_hub_last_dept';
+  function recordLastDept(cat){
+    if (!cat) return;
+    try{ localStorage.setItem(LAST_DEPT_KEY, cat); }catch(e){}
+  }
+
+  // #3 -- last 5 distinct tools opened, most recent first, shown at the top
+  // of Cmd+K when the search box is still empty.
+  const RECENT_TOOLS_KEY = 'gh_hub_recent_tools';
+  const MAX_RECENT_TOOLS = 5;
+  function getRecentTools(){
+    try{ return JSON.parse(localStorage.getItem(RECENT_TOOLS_KEY) || '[]'); }
+    catch(e){ return []; }
+  }
+  function recordRecentTool(key){
+    let recents = getRecentTools().filter(k => k !== key);
+    recents.unshift(key);
+    if (recents.length > MAX_RECENT_TOOLS) recents = recents.slice(0, MAX_RECENT_TOOLS);
+    try{ localStorage.setItem(RECENT_TOOLS_KEY, JSON.stringify(recents)); }catch(e){}
+  }
+
   function recordToolOpen(t){
     try{
       localStorage.setItem(LAST_TOOL_KEY, JSON.stringify({ key: t.key, title: t.title, ts: Date.now() }));
     }catch(e){ /* localStorage unavailable -- not worth failing navigation over */ }
+    recordRecentTool(t.key);
+    if (t.category && t.category !== 'Pending Tasks') recordLastDept(t.category);
   }
   function recordToolOpenByKey(key){
     const t = TOOLS.find(x => x.key === key);
@@ -1456,9 +1766,19 @@
   function toolCardUrl(t){
     if (!t.url) return null;
     let url = t.url;
+    const sep = () => url.indexOf('?') === -1 ? '?' : '&';
+
+    // #2 -- breadcrumb context ("Hub > Department > Tool") so the tool itself
+    // can show where it was opened from and link back. `full` falls back to
+    // the raw TOOLS catalog in case the caller only passed a partial object
+    // (see the estimatesSummary deep link above).
+    const full = TOOLS.find(x => x.key === t.key) || t;
+    if (full.category){
+      url += sep() + 'hubDept=' + encodeURIComponent(full.category) + '&hubTool=' + encodeURIComponent(full.title || '');
+    }
+
     if (currentUserEmail && EMAIL_PREFILL_TOOLS.indexOf(t.key) !== -1){
-      const sep = url.indexOf('?') === -1 ? '?' : '&';
-      url += sep + 'email=' + encodeURIComponent(currentUserEmail);
+      url += sep() + 'email=' + encodeURIComponent(currentUserEmail);
       if (currentSessionToken && SSO_TOOLS.indexOf(t.key) !== -1){
         url += '&sessionToken=' + encodeURIComponent(currentSessionToken);
       }
@@ -1708,19 +2028,10 @@
     window.open(toolCardUrl(t), '_blank', 'noopener');
     closeSearch();
   }
-  function renderSearchResults(query){
-    const q = query.trim().toLowerCase();
-    const results = currentVisibleTools.filter(t =>
-      t.title.toLowerCase().includes(q) || t.category.toLowerCase().includes(q)
-    );
-    searchActiveIndex = results.length ? 0 : -1;
-    const box = document.getElementById('searchResults');
-    if (!results.length){
-      box.innerHTML = '<div class="search-empty">No tools match &ldquo;' + query + '&rdquo;.</div>';
-      return;
-    }
-    box.innerHTML = results.map((t, i) => `
-      <a class="search-result${i === 0 ? ' active' : ''}${t.url ? '' : ' disabled'}" data-key="${t.key}"
+  // #3 -- renders one <a class="search-result"> row for a tool.
+  function searchResultRow(t, isActive){
+    return `
+      <a class="search-result${isActive ? ' active' : ''}${t.url ? '' : ' disabled'}" data-key="${t.key}"
          ${t.url ? `onclick="openToolFromSearch('${t.key}')"` : ''}>
         <div class="sr-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg></div>
         <div>
@@ -1728,7 +2039,50 @@
           <div class="sr-cat">${t.category}${t.url ? '' : ' · ' + t.tag}</div>
         </div>
       </a>
-    `).join('');
+    `;
+  }
+
+  function renderSearchResults(query){
+    const q = query.trim().toLowerCase();
+    const box = document.getElementById('searchResults');
+
+    // Empty box: lead with the last few tools this person actually opened,
+    // then the rest -- so the search doesn't always start from a blank,
+    // alphabetically-flat list.
+    if (!q){
+      const recentKeys = getRecentTools();
+      const recentTools = recentKeys
+        .map(k => currentVisibleTools.find(t => t.key === k))
+        .filter(Boolean);
+      const restTools = currentVisibleTools.filter(t => recentKeys.indexOf(t.key) === -1);
+      const ordered = recentTools.concat(restTools);
+      searchActiveIndex = ordered.length ? 0 : -1;
+      if (!ordered.length){
+        box.innerHTML = '<div class="search-empty">No tools are assigned to your role yet.</div>';
+        return;
+      }
+      let html = '';
+      if (recentTools.length){
+        html += '<div class="search-section-label">Recent</div>';
+        html += recentTools.map((t, i) => searchResultRow(t, i === 0)).join('');
+        html += '<div class="search-section-label">All tools</div>';
+        html += restTools.map(t => searchResultRow(t, false)).join('');
+      } else {
+        html += ordered.map((t, i) => searchResultRow(t, i === 0)).join('');
+      }
+      box.innerHTML = html;
+      return;
+    }
+
+    const results = currentVisibleTools.filter(t =>
+      t.title.toLowerCase().includes(q) || t.category.toLowerCase().includes(q)
+    );
+    searchActiveIndex = results.length ? 0 : -1;
+    if (!results.length){
+      box.innerHTML = '<div class="search-empty">No tools match &ldquo;' + query + '&rdquo;.</div>';
+      return;
+    }
+    box.innerHTML = results.map((t, i) => searchResultRow(t, i === 0)).join('');
   }
 
   /* ================= DARK MODE (same toggle pattern as Pending Tasks) ================= */
@@ -1785,6 +2139,8 @@
       if (e.key === 'Escape'){
         closeSearch();
         closeRoleModal();
+        closeChangelog();
+        if (tourActive) skipTour();
       }
     });
 
