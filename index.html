@@ -1393,8 +1393,20 @@
       card.style.visibility = 'hidden';
       card.classList.add('open');
       const cw = card.offsetWidth, ch = card.offsetHeight;
-      card.style.top = Math.max(12, Math.min(rect.bottom + 14, window.innerHeight - ch - 12)) + 'px';
-      card.style.left = Math.max(12, Math.min(rect.left, window.innerWidth - cw - 12)) + 'px';
+      // Narrow, tall targets (the side rail) sit flush against the left edge --
+      // aligning the card's left edge to rect.left there makes it overlap the
+      // rail itself and clip the card's own text. Put the card beside the rail
+      // instead of below it in that case.
+      let top, left;
+      if (rect.width < 100 && rect.height > 200) {
+        left = rect.right + 14;
+        top = window.innerHeight / 2 - ch / 2;
+      } else {
+        top = rect.bottom + 14;
+        left = rect.left;
+      }
+      card.style.top = Math.max(12, Math.min(top, window.innerHeight - ch - 12)) + 'px';
+      card.style.left = Math.max(12, Math.min(left, window.innerWidth - cw - 12)) + 'px';
       card.style.visibility = '';
     }, 260);
   }
