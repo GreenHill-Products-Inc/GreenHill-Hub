@@ -193,7 +193,7 @@
   /* Flyout -- the department's tool list, opened next to the rail icon
      that was clicked. One at a time; closes on outside click or Esc. */
   .rail-flyout{
-    position:fixed; left:60px; z-index:31; width:220px;
+    position:fixed; left:60px; z-index:90; width:220px;
     background:var(--card); border:1px solid var(--border); border-radius:12px;
     box-shadow:0 12px 28px rgba(20,30,15,.14); padding:8px;
     display:none; animation:fadeScaleIn .16s cubic-bezier(.16,1,.3,1) both;
@@ -676,6 +676,8 @@
         <a href="#" id="reportIssueLink" onclick="reportIssue(); return false;">Report an issue</a>
         <span class="hub-footer-dot">·</span>
         <a href="#" onclick="openChangelog(); return false;">What's new</a>
+        <span class="hub-footer-dot">·</span>
+        <a href="#" onclick="replayTour(); return false;">Replay tour</a>
         <span class="hub-footer-dot">·</span>
         <span>Internal use only — GreenHill Products Inc. employees and authorized contractors</span>
         <span class="hub-footer-dot">·</span>
@@ -1348,10 +1350,22 @@
   function maybeStartTour(){
     let done = false;
     try{ done = !!localStorage.getItem(TOUR_DONE_KEY); }catch(e){}
-    if (done) return;
+    // ?tour=1 in the URL forces the tour to run even if it's already been seen --
+    // handy while iterating on the Hub to preview it after every reload.
+    let forced = false;
+    try{ forced = new URLSearchParams(location.search).get('tour') === '1'; }catch(e){}
+    if (done && !forced) return;
     tourStepIndex = 0;
     tourActive = true;
     closeRailFlyout(); // don't fight the tour for screen space
+    showTourStep();
+  }
+  // Manual re-run from the footer "Replay tour" link -- same idea as ?tour=1
+  // but a click instead of editing the URL, and available to anyone, anytime.
+  function replayTour(){
+    tourStepIndex = 0;
+    tourActive = true;
+    closeRailFlyout();
     showTourStep();
   }
   function showTourStep(){
